@@ -1,6 +1,9 @@
 use crate::common::file::{VPKFile, VPKFileReader};
 use crate::common::format::{VPKDirectoryEntry, VPKTree};
-use std::io::Seek;
+use crc::{Crc, CRC_32_ISO_HDLC};
+use std::fs::File;
+use std::io::{Seek, SeekFrom};
+use std::path::Path;
 
 pub const VPK_SIGNATURE_V1: u32 = 0x55AA1234;
 pub const VPK_VERSION_V1: u32 = 1;
@@ -79,5 +82,46 @@ impl VPKVersion1 {
         let tree = VPKTree::from(file, tree_start, header.tree_size.into());
 
         Self { header, tree }
+    }
+
+    pub fn read_file(
+        self: &Self,
+        archive_path: &String,
+        vpk_name: &String,
+        file_path: &String,
+    ) -> Option<Vec<u8>> {
+        let entry = self.tree.files.get(file_path)?;
+        let mut buf: Vec<u8> = Vec::new();
+
+        if entry.preload_bytes > 0 {
+            buf.append(self.tree.preload.get(file_path)?.clone().as_mut());
+        }
+
+        if entry.entry_length > 0 {
+            let path = Path::new(archive_path).join(format!(
+                "{}_{:0>3}.vpk",
+                vpk_name,
+                entry.archive_index.to_string()
+            ));
+
+            let mut archive_file = File::open(path).ok()?;
+
+            let _ = archive_file.seek(SeekFrom::Start(entry.entry_offset as _));
+
+            buf.append(
+                archive_file
+                    .read_bytes(entry.entry_length as _)
+                    .ok()?
+                    .as_mut(),
+            );
+        }
+
+        let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC);
+        let mut digest = crc.digest();
+        digest.update(&buf);
+
+        assert_eq!(digest.finalize(), entry.crc, "CRC must match");
+
+        Some(buf)
     }
 }

@@ -38,12 +38,30 @@ mod tests {
         assert_eq!(vpk.tree.files.len(), 1, "VPK tree should have 1 entry");
         assert_eq!(
             vpk.tree.files.get("test/file.txt"),
-            Some(&VPKDirectoryEntry::new()),
+            Some(&VPKDirectoryEntry {
+                crc: 0x4570FA16,
+                preload_bytes: 0,
+                archive_index: 0,
+                entry_length: 9,
+                entry_offset: 0,
+                terminator: 0xFFFF,
+            }),
             "File \"test/file.txt\" should exist"
         );
         assert!(
             file.stream_position().unwrap() >= file.seek(std::io::SeekFrom::End(0)).unwrap() - 1,
             "Should be at end of file"
+        );
+
+        let test_file = vpk.read_file(
+            &String::from("./test_files"),
+            &String::from("single_file_v1"),
+            &String::from("test/file.txt"),
+        );
+        assert_eq!(
+            test_file,
+            Some(Vec::from("test text")),
+            "File contents should be \"test text\""
         );
     }
 
@@ -68,11 +86,7 @@ mod tests {
         let path = Path::new("./test_files/single_file_v2_dir.vpk");
         let mut file: File = File::open(path).expect("Failed to open file");
         let vpk = VPKVersion2::from(&mut file);
-        assert_eq!(
-            vpk.tree.files.len(),
-            1,
-            "VPK tree should have 1 entry"
-        );
+        assert_eq!(vpk.tree.files.len(), 1, "VPK tree should have 1 entry");
         assert!(
             file.stream_position().unwrap() >= file.seek(std::io::SeekFrom::End(0)).unwrap() - 1,
             "Should be at end of file"
