@@ -1,0 +1,189 @@
+use crate::common::file::{VPKFile, VPKFileReader};
+use crate::common::format::{DirEntry, VPKTree};
+use std::io::{Seek, SeekFrom};
+
+pub const VPK_SIGNATURE_REVPK: u32 = 0x55AA1234;
+pub const VPK_VERSION_REVPK: u32 = 196610;
+
+pub struct VPKHeaderRespawn {
+    pub signature: u32,
+    pub version: u32,
+
+    // Size of the directory tree in bytes
+    pub tree_size: u32,
+
+    // Should end up as 0, maybe FileDataSectionSize (see https://developer.valvesoftware.com/wiki/VPK_File_Format#VPK_2)
+    pub unknown: u32,
+}
+
+impl VPKHeaderRespawn {
+    pub fn from(file: &mut VPKFile) -> Self {
+        let signature = file
+            .read_u32()
+            .expect("Could not read header signature from file");
+        let version = file
+            .read_u32()
+            .expect("Could not read header version from file");
+        let tree_size = file
+            .read_u32()
+            .expect("Could not read header version from file");
+        let unknown = file
+            .read_u32()
+            .expect("Could not read unknown field from file");
+
+        assert_eq!(
+            signature, VPK_SIGNATURE_REVPK,
+            "VPK header signature should be {:#x}",
+            VPK_SIGNATURE_REVPK
+        );
+        assert_eq!(
+            version, VPK_VERSION_REVPK,
+            "VPK header version should be {}",
+            VPK_VERSION_REVPK
+        );
+        assert_eq!(unknown, 0, "VPK header unknown field should be 0");
+
+        Self {
+            signature,
+            version,
+            tree_size,
+            unknown,
+        }
+    }
+
+    pub fn is_format(file: &mut VPKFile) -> bool {
+        let pos = file.stream_position().unwrap();
+
+        let signature = file.read_u32();
+        let version = file.read_u32();
+
+        let _ = file.seek(std::io::SeekFrom::Start(pos));
+
+        signature.unwrap_or(0) == VPK_SIGNATURE_REVPK && version.unwrap_or(0) == VPK_SIGNATURE_REVPK
+    }
+}
+
+pub enum EPackedLoadFlags {
+    LoadNone,
+    LoadVisible = 1 << 0,     // FileSystem visibility?
+    LoadCache = 1 << 8,       // Only set for assets not stored in the depot directory.
+    LoadAcacheUnk0 = 1 << 10, // Acache uses this!!!
+    LoadTextureUnk0 = 1 << 18,
+    LoadTextureUnk1 = 1 << 19,
+    LoadTextureUnk2 = 1 << 20,
+}
+
+pub enum EPackedTextureFlags {
+    TextureNone,
+    TextureDefault = 1 << 3,
+    TextureEnvironmentMap = 1 << 10,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct VPKDirectoryEntryRespawn {
+    pub crc: u32,
+    pub preload_bytes: u16,
+    pub file_parts: Vec<VPKFilePartEntryRespawn>,
+}
+
+impl VPKDirectoryEntryRespawn {
+    pub fn new() -> Self {
+        Self {
+            crc: 0,
+            preload_bytes: 0,
+            file_parts: Vec::new(),
+        }
+    }
+}
+
+impl DirEntry for VPKDirectoryEntryRespawn {
+    fn from(file: &mut VPKFile) -> Self {
+        let crc = file.read_u32().expect("Failed to read CRC");
+        let preload_bytes = file.read_u16().expect("Failed to read preload bytes");
+
+        let mut file_parts: Vec<VPKFilePartEntryRespawn> = Vec::new();
+
+        let pos = file.stream_position().unwrap();
+        let end = file.seek(SeekFrom::End(0)).unwrap();
+        let _ = file.seek(SeekFrom::Start(pos)).unwrap();
+
+        loop {
+            let archive_index = file.read_u16().expect("Failed reading archive index");
+            if archive_index == 0xFFFF || file.stream_position().unwrap() == end {
+                break;
+            }
+
+            file_parts.push(VPKFilePartEntryRespawn {
+                archive_index,
+                load_flags: file.read_u16().expect("Failed reading load flags"),
+                texture_flags: file.read_u32().expect("Failed reading texture flags"),
+                entry_offset: file.read_u64().expect("Failed reading entry offset"),
+                entry_length: file.read_u64().expect("Failed reading entry length"),
+                entry_length_uncompressed: file
+                    .read_u64()
+                    .expect("Failed reading uncompressed entry length"),
+            });
+        }
+
+        Self {
+            crc,
+            preload_bytes,
+            file_parts,
+        }
+    }
+
+    fn get_preload_bytes(self: &Self) -> usize {
+        self.preload_bytes as _
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct VPKFilePartEntryRespawn {
+    pub archive_index: u16,
+    pub load_flags: u16,
+    pub texture_flags: u32,
+    pub entry_offset: u64,
+    pub entry_length: u64,
+    pub entry_length_uncompressed: u64,
+}
+
+impl VPKFilePartEntryRespawn {
+    pub fn new() -> Self {
+        Self {
+            archive_index: 0,
+            load_flags: 0,
+            texture_flags: 0,
+            entry_offset: 0,
+            entry_length: 0,
+            entry_length_uncompressed: 0,
+        }
+    }
+}
+
+pub struct VPKRespawn {
+    pub header: VPKHeaderRespawn,
+    pub tree: VPKTree<VPKDirectoryEntryRespawn>,
+}
+
+impl VPKRespawn {
+    pub fn new() -> Self {
+        Self {
+            header: VPKHeaderRespawn {
+                signature: VPK_SIGNATURE_REVPK,
+                version: VPK_VERSION_REVPK,
+                tree_size: 0,
+                unknown: 0,
+            },
+            tree: VPKTree::new(),
+        }
+    }
+
+    pub fn from(file: &mut VPKFile) -> Self {
+        let header = VPKHeaderRespawn::from(file);
+
+        let tree_start = file.stream_position().unwrap();
+        let tree = VPKTree::from(file, tree_start, header.tree_size.into());
+
+        Self { header, tree }
+    }
+}
