@@ -118,8 +118,19 @@ mod tests {
 
         assert_eq!(vpk.tree.files.len(), 1, "VPK tree should have 1 entry");
 
-        let mut dir_entry = VPKDirectoryEntryRespawn::new();
-        dir_entry.file_parts.push(VPKFilePartEntryRespawn::new());
+        let mut dir_entry = VPKDirectoryEntryRespawn {
+            crc: 0x4570FA16,
+            preload_bytes: 0,
+            file_parts: Vec::new(),
+        };
+        dir_entry.file_parts.push(VPKFilePartEntryRespawn {
+            archive_index: 0,
+            load_flags: 0,
+            texture_flags: 0,
+            entry_offset: 0,
+            entry_length: 9,
+            entry_length_uncompressed: 9,
+        });
         assert_eq!(
             vpk.tree.files.get("test/file.txt"),
             Some(&dir_entry),
@@ -128,6 +139,17 @@ mod tests {
         assert!(
             file.stream_position().unwrap() >= file.seek(std::io::SeekFrom::End(0)).unwrap() - 1,
             "Should be at end of file"
+        );
+
+        let test_file = vpk.read_file(
+            &String::from("./test_files"),
+            &String::from("single_file_revpk"),
+            &String::from("test/file.txt"),
+        );
+        assert_eq!(
+            test_file,
+            Some(Vec::from("test text")),
+            "File contents should be \"test text\""
         );
     }
 

@@ -1,6 +1,9 @@
-use crate::common::file::{VPKFile, VPKFileReader};
+use crate::common::file::{self, VPKFile, VPKFileReader};
 use crate::common::format::{DirEntry, VPKTree};
+use crc::{Crc, CRC_32_ISO_HDLC};
+use std::fs::File;
 use std::io::{Seek, SeekFrom};
+use std::path::Path;
 
 pub const VPK_SIGNATURE_REVPK: u32 = 0x55AA1234;
 pub const VPK_VERSION_REVPK: u32 = 196610;
@@ -185,5 +188,52 @@ impl VPKRespawn {
         let tree = VPKTree::from(file, tree_start, header.tree_size.into());
 
         Self { header, tree }
+    }
+
+    pub fn read_file(
+        self: &Self,
+        archive_path: &String,
+        vpk_name: &String,
+        file_path: &String,
+    ) -> Option<Vec<u8>> {
+        let entry: &VPKDirectoryEntryRespawn = self.tree.files.get(file_path)?;
+        let mut buf: Vec<u8> = Vec::new();
+
+        if entry.preload_bytes > 0 {
+            buf.append(self.tree.preload.get(file_path)?.clone().as_mut());
+        }
+
+        for file_part in &entry.file_parts {
+            if file_part.entry_length_uncompressed > 0 {
+                let path = Path::new(archive_path).join(format!(
+                    "{}_{:0>3}.vpk",
+                    vpk_name,
+                    file_part.archive_index.to_string()
+                ));
+
+                let mut archive_file = File::open(path).ok()?;
+
+                let _ = archive_file.seek(SeekFrom::Start(file_part.entry_offset as _));
+
+                if file_part.entry_length == file_part.entry_length_uncompressed {
+                    buf.append(
+                        archive_file
+                            .read_bytes(file_part.entry_length as _)
+                            .ok()?
+                            .as_mut(),
+                    );
+                } else {
+                    panic!("LZHAM Alpha decompression not yet implemented!");
+                }
+            }
+        }
+
+        let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC);
+        let mut digest = crc.digest();
+        digest.update(&buf);
+
+        assert_eq!(digest.finalize(), entry.crc, "CRC must match");
+
+        Some(buf)
     }
 }
