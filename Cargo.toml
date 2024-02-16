@@ -2,6 +2,7 @@
 name = "sourcepak"
 version = "0.1.0"
 edition = "2021"
+exclude = [".vscode", "test_files"]
 
 [features]
 respawn = ["revpk", "rpak"]
