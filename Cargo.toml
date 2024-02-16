@@ -5,9 +5,9 @@ edition = "2021"
 
 [features]
 respawn = ["revpk", "rpak"]
-revpk = []
+revpk = ["dep:lzham-alpha-sys"]
 rpak = []
 
 [dependencies]
 crc = "3.0.1"
-lzham-alpha-sys = { git = "https://github.com/barnabwhy/lzham-alpha-sys.git" }
+lzham-alpha-sys = { git = "https://github.com/barnabwhy/lzham-alpha-sys.git", optional = true }
