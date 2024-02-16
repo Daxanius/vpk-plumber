@@ -1,0 +1,22 @@
+"mp_colony"
+{
+	material		vgui/minimaps/mp_colony
+	material_alt	vgui/minimaps/fullscreen/mp_colony
+	pos_x		-9504
+	pos_y		8961
+	scale		13
+	displayDist	2048
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

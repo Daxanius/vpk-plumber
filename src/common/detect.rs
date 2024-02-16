@@ -1,6 +1,6 @@
-use crate::pak::{v1::format::VPKHeaderV1, v2::format::VPKHeaderV2};
 #[cfg(feature = "revpk")]
 use crate::pak::revpk::format::VPKHeaderRespawn;
+use crate::pak::{v1::format::VPKHeaderV1, v2::format::VPKHeaderV2};
 
 use super::file::VPKFile;
 
@@ -22,6 +22,6 @@ pub fn detect_pak_format(file: &mut VPKFile) -> PakFormat {
     if VPKHeaderRespawn::is_format(file) {
         return PakFormat::VPKRespawn;
     }
-    
+
     PakFormat::Unknown
 }

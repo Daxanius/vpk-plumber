@@ -156,6 +156,8 @@ mod tests {
     #[cfg(feature = "revpk")]
     #[test]
     fn read_big_vpk_revpk() {
+        use crate::common::file::{VPKFile, VPKFileReader};
+
         let path = Path::new("./test_files/titanfall/englishclient_mp_colony.bsp.pak000_dir.vpk");
         let mut file = File::open(path).expect("Failed to open file");
         let vpk = VPKRespawn::from(&mut file);
@@ -167,6 +169,23 @@ mod tests {
         assert!(
             file.stream_position().unwrap() >= file.seek(std::io::SeekFrom::End(0)).unwrap() - 1,
             "Should be at end of file"
+        );
+
+        let test_file = vpk.read_file(
+            &String::from("./test_files/titanfall"),
+            &String::from("client_mp_colony.bsp.pak000"),
+            &String::from("resource/overviews/mp_colony.txt"),
+        );
+        assert_eq!(
+            test_file,
+            Some(
+                VPKFile::open(Path::new("./test_files/titanfall/mp_colony.txt"))
+                    .unwrap()
+                    .read_string()
+                    .unwrap()
+                    .into()
+            ),
+            "File contents should match ./test_files/titanfall/mp_colony.txt"
         );
     }
 }

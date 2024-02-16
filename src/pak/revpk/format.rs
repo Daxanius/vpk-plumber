@@ -1,5 +1,7 @@
-use crate::common::file::{self, VPKFile, VPKFileReader};
+use crate::common::file::{VPKFile, VPKFileReader};
 use crate::common::format::{DirEntry, VPKTree};
+use crate::common::lzham::decompress;
+// use crate::common::lzham;
 use crc::{Crc, CRC_32_ISO_HDLC};
 use std::fs::File;
 use std::io::{Seek, SeekFrom};
@@ -223,7 +225,12 @@ impl VPKRespawn {
                             .as_mut(),
                     );
                 } else {
-                    panic!("LZHAM Alpha decompression not yet implemented!");
+                    let compressed_data =
+                        archive_file.read_bytes(file_part.entry_length as _).ok()?;
+
+                    let mut decompressed =
+                        decompress(&compressed_data, file_part.entry_length_uncompressed as _);
+                    buf.append(&mut decompressed);
                 }
             }
         }
