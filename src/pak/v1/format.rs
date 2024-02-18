@@ -17,33 +17,35 @@ pub struct VPKHeaderV1 {
 }
 
 impl VPKHeaderV1 {
-    pub fn from(file: &mut VPKFile) -> Self {
+    pub fn from(file: &mut VPKFile) -> Result<Self, String> {
         let signature = file
             .read_u32()
-            .expect("Could not read header signature from file");
+            .or(Err("Could not read header signature from file"))?;
         let version = file
             .read_u32()
-            .expect("Could not read header version from file");
+            .or(Err("Could not read header version from file"))?;
         let tree_size = file
             .read_u32()
-            .expect("Could not read header tree size from file");
+            .or(Err("Could not read header tree size from file"))?;
 
-        assert_eq!(
-            signature, VPK_SIGNATURE_V1,
-            "VPK header signature should be {:#x}",
-            VPK_SIGNATURE_V1
-        );
-        assert_eq!(
-            version, VPK_VERSION_V1,
-            "VPK header version should be {}",
-            VPK_VERSION_V1
-        );
+        if signature != VPK_SIGNATURE_V1 {
+            return Err(format!(
+                "VPK header signature should be {:#x}",
+                VPK_SIGNATURE_V1
+            ));
+        }
+        if version != VPK_VERSION_V1 {
+            return Err(format!(
+                "VPK header version should be {}",
+                VPK_VERSION_V1
+            ));
+        }
 
-        Self {
+        Ok(Self {
             signature,
             version,
             tree_size,
-        }
+        })
     }
 
     pub fn is_format(file: &mut VPKFile) -> bool {
@@ -75,13 +77,13 @@ impl PakFormat for VPKVersion1 {
         }
     }
 
-    fn from_file(file: &mut VPKFile) -> Self {
-        let header = VPKHeaderV1::from(file);
+    fn from_file(file: &mut VPKFile) -> Result<Self, String> {
+        let header = VPKHeaderV1::from(file)?;
 
         let tree_start = file.stream_position().unwrap();
-        let tree = VPKTree::from(file, tree_start, header.tree_size.into());
+        let tree = VPKTree::from(file, tree_start, header.tree_size.into())?;
 
-        Self { header, tree }
+        Ok(Self { header, tree })
     }
 
     fn read_file(
@@ -120,9 +122,11 @@ impl PakFormat for VPKVersion1 {
         let mut digest = crc.digest();
         digest.update(&buf);
 
-        assert_eq!(digest.finalize(), entry.crc, "CRC must match");
-
-        Some(buf)
+        if digest.finalize() != entry.crc {
+            None
+        } else {
+            Some(buf)
+        }
     }
 
     fn extract_file(
@@ -189,14 +193,16 @@ impl PakFormat for VPKVersion1 {
             }
         }
 
-        assert_eq!(digest.finalize(), entry.crc, "CRC must match");
-
-        Ok(())
+        if digest.finalize() != entry.crc {
+            Err("CRC must match".to_string())
+        } else {
+            Ok(())
+        }
     }
 }
 
 impl From<&mut VPKFile> for VPKVersion1 {
     fn from(file: &mut VPKFile) -> Self {
-        Self::from_file(file)
+        Self::from_file(file).expect("Failed to read VPK file")
     }
 }

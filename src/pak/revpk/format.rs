@@ -22,38 +22,42 @@ pub struct VPKHeaderRespawn {
 }
 
 impl VPKHeaderRespawn {
-    pub fn from(file: &mut VPKFile) -> Self {
+    pub fn from(file: &mut VPKFile) -> Result<Self, String> {
         let signature = file
             .read_u32()
-            .expect("Could not read header signature from file");
+            .or(Err("Could not read header signature from file"))?;
         let version = file
             .read_u32()
-            .expect("Could not read header version from file");
+            .or(Err("Could not read header version from file"))?;
         let tree_size = file
             .read_u32()
-            .expect("Could not read header version from file");
+            .or(Err("Could not read header version from file"))?;
         let unknown = file
             .read_u32()
-            .expect("Could not read unknown field from file");
+            .or(Err("Could not read unknown field from file"))?;
 
-        assert_eq!(
-            signature, VPK_SIGNATURE_REVPK,
-            "VPK header signature should be {:#x}",
-            VPK_SIGNATURE_REVPK
-        );
-        assert_eq!(
-            version, VPK_VERSION_REVPK,
-            "VPK header version should be {}",
-            VPK_VERSION_REVPK
-        );
-        assert_eq!(unknown, 0, "VPK header unknown field should be 0");
+        if signature != VPK_SIGNATURE_REVPK {
+            return Err(format!(
+                "VPK header signature should be {:#x}",
+                VPK_SIGNATURE_REVPK
+            ));
+        }
+        if version != VPK_VERSION_REVPK {
+            return Err(format!(
+                "VPK header version should be {}",
+                VPK_VERSION_REVPK
+            ));
+        }
+        if unknown != 0 {
+            return Err("VPK header unknown field should be 0".to_string());
+        }
 
-        Self {
+        Ok(Self {
             signature,
             version,
             tree_size,
             unknown,
-        }
+        })
     }
 
     pub fn is_format(file: &mut VPKFile) -> bool {
@@ -102,9 +106,9 @@ impl VPKDirectoryEntryRespawn {
 }
 
 impl DirEntry for VPKDirectoryEntryRespawn {
-    fn from(file: &mut VPKFile) -> Self {
-        let crc = file.read_u32().expect("Failed to read CRC");
-        let preload_bytes = file.read_u16().expect("Failed to read preload bytes");
+    fn from(file: &mut VPKFile) -> Result<Self, String> {
+        let crc = file.read_u32().or(Err("Failed to read CRC"))?;
+        let preload_bytes = file.read_u16().or(Err("Failed to read preload bytes"))?;
 
         let mut file_parts: Vec<VPKFilePartEntryRespawn> = Vec::new();
 
@@ -113,28 +117,28 @@ impl DirEntry for VPKDirectoryEntryRespawn {
         let _ = file.seek(SeekFrom::Start(pos)).unwrap();
 
         loop {
-            let archive_index = file.read_u16().expect("Failed reading archive index");
+            let archive_index = file.read_u16().or(Err("Failed reading archive index"))?;
             if archive_index == 0xFFFF || file.stream_position().unwrap() == end {
                 break;
             }
 
             file_parts.push(VPKFilePartEntryRespawn {
                 archive_index,
-                load_flags: file.read_u16().expect("Failed reading load flags"),
-                texture_flags: file.read_u32().expect("Failed reading texture flags"),
-                entry_offset: file.read_u64().expect("Failed reading entry offset"),
-                entry_length: file.read_u64().expect("Failed reading entry length"),
+                load_flags: file.read_u16().or(Err("Failed reading load flags"))?,
+                texture_flags: file.read_u32().or(Err("Failed reading texture flags"))?,
+                entry_offset: file.read_u64().or(Err("Failed reading entry offset"))?,
+                entry_length: file.read_u64().or(Err("Failed reading entry length"))?,
                 entry_length_uncompressed: file
                     .read_u64()
-                    .expect("Failed reading uncompressed entry length"),
+                    .or(Err("Failed reading uncompressed entry length"))?,
             });
         }
 
-        Self {
+        Ok(Self {
             crc,
             preload_bytes,
             file_parts,
-        }
+        })
     }
 
     fn get_preload_bytes(self: &Self) -> usize {
@@ -183,13 +187,13 @@ impl PakFormat for VPKRespawn {
         }
     }
 
-    fn from_file(file: &mut VPKFile) -> Self {
-        let header = VPKHeaderRespawn::from(file);
+    fn from_file(file: &mut VPKFile) -> Result<Self, String> {
+        let header = VPKHeaderRespawn::from(file)?;
 
         let tree_start = file.stream_position().unwrap();
-        let tree = VPKTree::from(file, tree_start, header.tree_size.into());
+        let tree = VPKTree::from(file, tree_start, header.tree_size.into())?;
 
-        Self { header, tree }
+        Ok(Self { header, tree })
     }
 
     fn read_file(
@@ -239,9 +243,11 @@ impl PakFormat for VPKRespawn {
         let mut digest = crc.digest();
         digest.update(&buf);
 
-        assert_eq!(digest.finalize(), entry.crc, "CRC must match");
-
-        Some(buf)
+        if digest.finalize() != entry.crc {
+            None
+        } else {
+            Some(buf)
+        }
     }
 
     fn extract_file(
@@ -319,14 +325,16 @@ impl PakFormat for VPKRespawn {
             }
         }
 
-        assert_eq!(digest.finalize(), entry.crc, "CRC must match");
-
-        Ok(())
+        if digest.finalize() != entry.crc {
+            Err("CRC must match".to_string())
+        } else {
+            Ok(())
+        }
     }
 }
 
 impl From<&mut VPKFile> for VPKRespawn {
     fn from(file: &mut VPKFile) -> Self {
-        Self::from_file(file)
+        Self::from_file(file).expect("Failed to read VPK file")
     }
 }

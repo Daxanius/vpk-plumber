@@ -6,7 +6,9 @@ use std::io::{Seek, SeekFrom};
 pub const VPK_ENTRY_TERMINATOR: u16 = 0xFFFF;
 
 pub trait DirEntry {
-    fn from(file: &mut File) -> Self;
+    fn from(file: &mut File) -> Result<Self, String>
+    where
+        Self: Sized;
     fn get_preload_bytes(self: &Self) -> usize;
 }
 
@@ -26,39 +28,39 @@ where
         }
     }
 
-    pub fn from(file: &mut VPKFile, start: u64, size: u64) -> Self {
+    pub fn from(file: &mut VPKFile, start: u64, size: u64) -> Result<Self, String> {
         file.seek(SeekFrom::Start(start))
-            .expect("Could not seek to start of tree");
+            .or(Err("Could not seek to start of tree"))?;
 
         let mut tree = Self::new();
 
         while file.stream_position().unwrap() < start + size {
-            let extension = file.read_string().expect("Failed to read extension");
+            let extension = file.read_string().or(Err("Failed to read extension"))?;
             if extension.len() == 0 {
                 break;
             }
 
             loop {
-                let path = file.read_string().expect("Failed to read path");
+                let path = file.read_string().or(Err("Failed to read path"))?;
                 if path.len() == 0 || file.stream_position().unwrap() > start + size {
                     break;
                 }
 
                 loop {
-                    let file_name = file.read_string().expect("Failed to read file name");
+                    let file_name = file.read_string().or(Err("Failed to read file name"))?;
                     if file_name.len() == 0 || file.stream_position().unwrap() > start + size {
                         break;
                     }
 
                     let file_path = format!("{}/{}.{}", path, file_name, extension);
 
-                    let entry = DirectoryEntry::from(file);
+                    let entry = DirectoryEntry::from(file)?;
 
                     if entry.get_preload_bytes() > 0 {
                         tree.preload.insert(
                             file_path.clone(),
                             file.read_bytes(entry.get_preload_bytes())
-                                .expect("Failed to read preload data"),
+                                .or(Err("Failed to read preload data"))?,
                         );
                     }
 
@@ -67,7 +69,7 @@ where
             }
         }
 
-        tree
+        Ok(tree)
     }
 }
 
@@ -105,27 +107,26 @@ impl VPKDirectoryEntry {
 }
 
 impl DirEntry for VPKDirectoryEntry {
-    fn from(file: &mut VPKFile) -> Self {
-        let crc = file.read_u32().expect("Failed to read CRC");
-        let preload_bytes = file.read_u16().expect("Failed to read preload bytes");
-        let archive_index = file.read_u16().expect("Failed to read archive index");
-        let entry_offset = file.read_u32().expect("Failed to read entry offset");
-        let entry_length = file.read_u32().expect("Failed to read entry length");
-        let terminator = file.read_u16().expect("Failed to read terminator");
+    fn from(file: &mut VPKFile) -> Result<Self, String> {
+        let crc = file.read_u32().or(Err("Failed to read CRC"))?;
+        let preload_bytes = file.read_u16().or(Err("Failed to read preload bytes"))?;
+        let archive_index = file.read_u16().or(Err("Failed to read archive index"))?;
+        let entry_offset = file.read_u32().or(Err("Failed to read entry offset"))?;
+        let entry_length = file.read_u32().or(Err("Failed to read entry length"))?;
+        let terminator = file.read_u16().or(Err("Failed to read terminator"))?;
 
-        assert_eq!(
-            terminator, VPK_ENTRY_TERMINATOR,
-            "VPK entry terminator should be 0xFFFF"
-        );
+        if terminator != VPK_ENTRY_TERMINATOR {
+            return Err(String::from("VPK entry terminator should be 0xFFFF"));
+        }
 
-        Self {
+        Ok(Self {
             crc,
             preload_bytes,
             archive_index,
             entry_offset,
             entry_length,
             terminator,
-        }
+        })
     }
 
     fn get_preload_bytes(self: &Self) -> usize {
@@ -135,7 +136,9 @@ impl DirEntry for VPKDirectoryEntry {
 
 pub trait PakFormat {
     fn new() -> Self;
-    fn from_file(file: &mut File) -> Self;
+    fn from_file(file: &mut File) -> Result<Self, String>
+    where
+        Self: Sized;
     fn read_file(
         self: &Self,
         archive_path: &String,
