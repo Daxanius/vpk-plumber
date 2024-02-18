@@ -7,19 +7,19 @@ sourcepak is a Rust crate that provides support for working with VPK (Valve Pak)
 - [ ] Pack files into VPK archives
 
 ## Supported formats
-### VPK v1
+### VPK v1 (Alien Swarm, Dota 2, L4D, L4D2, Portal 2, SFM)
 - [x] Read directory files
 - [x] Read file contents
 - [ ] Patch existing VPKs
 - [ ] Write new VPKs
 
-### VPK v2
+### VPK v2 (CS:GO, CS:S, DoD:S, HL:S, HL2, HL2:DM, Portal, TF2, Source 2)
 - [x] Read directory files
 - [ ] Read file contents
 - [ ] Patch existing VPKs
 - [ ] Write new VPKs
 
-### Respawn VPK
+### Respawn VPK (Titanfall)
 - [x] Read directory files
 - [x] Read file contents
 - [ ] Read audio files
