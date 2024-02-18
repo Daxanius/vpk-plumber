@@ -1,5 +1,5 @@
 use crate::common::file::{VPKFile, VPKFileReader};
-use crate::common::format::{VPKDirectoryEntry, PakFormat, VPKTree};
+use crate::common::format::{PakFormat, VPKDirectoryEntry, VPKTree};
 use crc::{Crc, CRC_32_ISO_HDLC};
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
@@ -35,10 +35,7 @@ impl VPKHeaderV1 {
             ));
         }
         if version != VPK_VERSION_V1 {
-            return Err(format!(
-                "VPK header version should be {}",
-                VPK_VERSION_V1
-            ));
+            return Err(format!("VPK header version should be {}", VPK_VERSION_V1));
         }
 
         Ok(Self {
@@ -153,15 +150,16 @@ impl PakFormat for VPKVersion1 {
         let mut out_file = File::create(out_path).or(Err("Failed to create output file"))?;
 
         if entry.preload_bytes > 0 {
-            out_file.write_all(
-                self.tree
-                    .preload
-                    .get(file_path)
-                    .ok_or("Preload data not found in VPK")?
-                    .clone()
-                    .as_mut(),
-            )
-            .or(Err("Failed to write to output file"))?;
+            out_file
+                .write_all(
+                    self.tree
+                        .preload
+                        .get(file_path)
+                        .ok_or("Preload data not found in VPK")?
+                        .clone()
+                        .as_mut(),
+                )
+                .or(Err("Failed to write to output file"))?;
         }
 
         if entry.entry_length > 0 {

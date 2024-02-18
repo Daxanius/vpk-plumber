@@ -8,7 +8,7 @@ mod tests {
         VPKDirectoryEntryRespawn, VPKFilePartEntryRespawn, VPKRespawn,
     };
     use crate::{
-        common::format::{VPKDirectoryEntry, PakFormat},
+        common::format::{PakFormat, VPKDirectoryEntry},
         pak::{v1::format::VPKVersion1, v2::format::VPKVersion2},
     };
     use std::{fs::File, io::Seek, path::Path};

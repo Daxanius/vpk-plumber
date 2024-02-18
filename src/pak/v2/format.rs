@@ -41,18 +41,18 @@ impl VPKHeaderV2 {
         let tree_size = file
             .read_u32()
             .or(Err("Could not read header tree size from file"))?;
-        let file_data_section_size = file
-            .read_u32()
-            .or(Err("Could not read header file data section size from file"))?;
-        let archive_md5_section_size = file
-            .read_u32()
-            .or(Err("Could not read header archive MD5 section size from file"))?;
-        let other_md5_section_size = file
-            .read_u32()
-            .or(Err("Could not read header other MD5 section size from file"))?;
-        let signature_section_size = file
-            .read_u32()
-            .or(Err("Could not read header signature section size from file"))?;
+        let file_data_section_size = file.read_u32().or(Err(
+            "Could not read header file data section size from file",
+        ))?;
+        let archive_md5_section_size = file.read_u32().or(Err(
+            "Could not read header archive MD5 section size from file",
+        ))?;
+        let other_md5_section_size = file.read_u32().or(Err(
+            "Could not read header other MD5 section size from file",
+        ))?;
+        let signature_section_size = file.read_u32().or(Err(
+            "Could not read header signature section size from file",
+        ))?;
 
         if signature != VPK_SIGNATURE_V2 {
             return Err(format!(
@@ -189,9 +189,9 @@ impl PakFormat for VPKVersion2 {
             tree_checksum: file
                 .read_bytes(16)
                 .or(Err("Failed reading other MD5 section tree checksum"))?,
-            archive_md5_section_checksum: file
-                .read_bytes(16)
-                .or(Err("Failed reading other MD5 section archive MD5 section checksum"))?,
+            archive_md5_section_checksum: file.read_bytes(16).or(Err(
+                "Failed reading other MD5 section archive MD5 section checksum",
+            ))?,
             unknown: file
                 .read_bytes(16)
                 .or(Err("Failed reading other MD5 section unknown"))?,
