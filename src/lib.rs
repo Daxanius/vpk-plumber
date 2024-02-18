@@ -31,6 +31,17 @@ mod tests {
     }
 
     #[test]
+    fn read_invalid_vpk_v1() {
+        let path = Path::new("./test_files/single_file_v1_000.vpk");
+        let mut file = File::open(path).expect("Failed to open file");
+        let vpk = VPKVersion1::try_from(&mut file);
+        assert!(
+            vpk.is_err_and(|x| x.contains("VPK header signature should be 0x55aa1234")),
+            "VPK file should be invalid",
+        );
+    }
+
+    #[test]
     fn read_single_file_vpk_v1() {
         let path = Path::new("./test_files/single_file_v1_dir.vpk");
         let mut file = File::open(path).expect("Failed to open file");
