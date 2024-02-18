@@ -255,8 +255,10 @@ impl PakFormat for VPKVersion2 {
     }
 }
 
-impl From<&mut VPKFile> for VPKVersion2 {
-    fn from(file: &mut VPKFile) -> Self {
-        Self::from_file(file).expect("Failed to read VPK file")
+impl TryFrom<&mut VPKFile> for VPKVersion2 {
+    fn try_from(file: &mut VPKFile) -> Result<Self, String> {
+        Self::from_file(file)
     }
+
+    type Error = String;
 }

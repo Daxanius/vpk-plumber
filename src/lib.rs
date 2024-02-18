@@ -17,7 +17,7 @@ mod tests {
     fn read_empty_vpk_v1() {
         let path = Path::new("./test_files/empty_v1_dir.vpk");
         let mut file = File::open(path).expect("Failed to open file");
-        let vpk = VPKVersion1::from(&mut file);
+        let vpk = VPKVersion1::try_from(&mut file).expect("Failed to read VPK file");
         assert_eq!(vpk.tree.files.len(), 0, "VPK tree should have 0 entries");
         assert_eq!(
             vpk.tree.files.get("test/file.txt"),
@@ -34,7 +34,7 @@ mod tests {
     fn read_single_file_vpk_v1() {
         let path = Path::new("./test_files/single_file_v1_dir.vpk");
         let mut file = File::open(path).expect("Failed to open file");
-        let vpk = VPKVersion1::from(&mut file);
+        let vpk = VPKVersion1::try_from(&mut file).expect("Failed to read VPK file");
         assert_eq!(vpk.tree.files.len(), 1, "VPK tree should have 1 entry");
         assert_eq!(
             vpk.tree.files.get("test/file.txt"),
@@ -69,7 +69,7 @@ mod tests {
     fn read_big_vpk_v1() {
         let path = Path::new("./test_files/portal/pak01_dir.vpk");
         let mut file: File = File::open(path).expect("Failed to open file");
-        let vpk = VPKVersion1::from(&mut file);
+        let vpk = VPKVersion1::try_from(&mut file).expect("Failed to read VPK file");
         assert_eq!(
             vpk.tree.files.len(),
             449,
@@ -85,7 +85,7 @@ mod tests {
     fn read_single_file_vpk_v2() {
         let path = Path::new("./test_files/single_file_v2_dir.vpk");
         let mut file: File = File::open(path).expect("Failed to open file");
-        let vpk = VPKVersion2::from(&mut file);
+        let vpk = VPKVersion2::try_from(&mut file).expect("Failed to read VPK file");
         assert_eq!(vpk.tree.files.len(), 1, "VPK tree should have 1 entry");
         assert!(
             file.stream_position().unwrap() >= file.seek(std::io::SeekFrom::End(0)).unwrap() - 1,
@@ -97,7 +97,7 @@ mod tests {
     fn read_big_vpk_v2() {
         let path = Path::new("./test_files/tf2/tf2_sound_misc_dir.vpk");
         let mut file: File = File::open(path).expect("Failed to open file");
-        let vpk = VPKVersion2::from(&mut file);
+        let vpk = VPKVersion2::try_from(&mut file).expect("Failed to read VPK file");
         assert_eq!(
             vpk.tree.files.len(),
             3230,
@@ -114,7 +114,7 @@ mod tests {
     fn read_single_file_vpk_revpk() {
         let path = Path::new("./test_files/single_file_revpk_dir.vpk");
         let mut file = File::open(path).expect("Failed to open file");
-        let vpk = VPKRespawn::from(&mut file);
+        let vpk = VPKRespawn::try_from(&mut file).expect("Failed to read VPK file");
 
         assert_eq!(vpk.tree.files.len(), 1, "VPK tree should have 1 entry");
 
@@ -160,7 +160,7 @@ mod tests {
 
         let path = Path::new("./test_files/titanfall/englishclient_mp_colony.bsp.pak000_dir.vpk");
         let mut file = File::open(path).expect("Failed to open file");
-        let vpk = VPKRespawn::from(&mut file);
+        let vpk = VPKRespawn::try_from(&mut file).expect("Failed to read VPK file");
         assert_eq!(
             vpk.tree.files.len(),
             5723,

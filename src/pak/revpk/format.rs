@@ -333,8 +333,10 @@ impl PakFormat for VPKRespawn {
     }
 }
 
-impl From<&mut VPKFile> for VPKRespawn {
-    fn from(file: &mut VPKFile) -> Self {
-        Self::from_file(file).expect("Failed to read VPK file")
+impl TryFrom<&mut VPKFile> for VPKRespawn {
+    fn try_from(file: &mut VPKFile) -> Result<Self, String> {
+        Self::from_file(file)
     }
+
+    type Error = String;
 }
