@@ -1,6 +1,7 @@
 use crate::common::file::{VPKFile, VPKFileReader};
 use crate::common::format::{PakFormat, VPKDirectoryEntry, VPKTree};
 use crc::{Crc, CRC_32_ISO_HDLC};
+use std::cmp::min;
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
 use std::path::Path;
@@ -150,16 +151,17 @@ impl PakFormat for VPKVersion1 {
         let mut out_file = File::create(out_path).or(Err("Failed to create output file"))?;
 
         if entry.preload_bytes > 0 {
+            let chunk = self
+                .tree
+                .preload
+                .get(file_path)
+                .ok_or("Preload data not found in VPK")?;
+
             out_file
-                .write_all(
-                    self.tree
-                        .preload
-                        .get(file_path)
-                        .ok_or("Preload data not found in VPK")?
-                        .clone()
-                        .as_mut(),
-                )
+                .write_all(&chunk)
                 .or(Err("Failed to write to output file"))?;
+
+            digest.update(&chunk);
         }
 
         if entry.entry_length > 0 {
@@ -177,7 +179,7 @@ impl PakFormat for VPKVersion1 {
             let mut remaining = entry.entry_length as usize;
             while remaining > 0 {
                 let chunk = archive_file
-                    .read_bytes(1024 * 1024)
+                    .read_bytes(min(1024 * 1024, remaining))
                     .or(Err("Failed to read from archive file"))?;
                 if chunk.len() == 0 {
                     return Err("Failed to read from archive file".to_string());
@@ -185,7 +187,12 @@ impl PakFormat for VPKVersion1 {
                 out_file
                     .write_all(&chunk)
                     .or(Err("Failed to write to output file"))?;
-                remaining -= chunk.len();
+
+                if remaining >= chunk.len() {
+                    remaining -= chunk.len();
+                } else {
+                    remaining = 0;
+                }
 
                 digest.update(&chunk);
             }
