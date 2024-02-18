@@ -49,7 +49,7 @@ pub fn compress(src: &mut Vec<u8>) -> Vec<u8> {
         );
     };
 
-    dst.shrink_to(dst_len);
+    dst.truncate(dst_len);
 
     dst
 }
@@ -71,7 +71,7 @@ pub fn decompress(src: &Vec<u8>, dst_len: usize) -> Vec<u8> {
         );
     };
 
-    dst.shrink_to(dst_len_new);
+    dst.truncate(dst_len_new);
 
     dst
 }
