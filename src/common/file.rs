@@ -61,7 +61,8 @@ impl VPKFileReader for VPKFile {
 
     fn read_bytes(self: &mut Self, count: usize) -> Result<Vec<u8>> {
         let mut buffer = vec![0; count];
-        self.read(&mut buffer)?;
+        let size = self.read(&mut buffer)?;
+        buffer.shrink_to(size);
 
         Ok(buffer)
     }

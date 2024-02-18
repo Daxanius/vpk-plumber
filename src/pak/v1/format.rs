@@ -1,8 +1,8 @@
 use crate::common::file::{VPKFile, VPKFileReader};
-use crate::common::format::{VPKDirectoryEntry, VPKTree};
+use crate::common::format::{VPKDirectoryEntry, PakFormat, VPKTree};
 use crc::{Crc, CRC_32_ISO_HDLC};
 use std::fs::File;
-use std::io::{Seek, SeekFrom};
+use std::io::{Seek, SeekFrom, Write};
 use std::path::Path;
 
 pub const VPK_SIGNATURE_V1: u32 = 0x55AA1234;
@@ -63,8 +63,8 @@ pub struct VPKVersion1 {
     pub tree: VPKTree<VPKDirectoryEntry>,
 }
 
-impl VPKVersion1 {
-    pub fn new() -> Self {
+impl PakFormat for VPKVersion1 {
+    fn new() -> Self {
         Self {
             header: VPKHeaderV1 {
                 signature: VPK_SIGNATURE_V1,
@@ -75,7 +75,7 @@ impl VPKVersion1 {
         }
     }
 
-    pub fn from(file: &mut VPKFile) -> Self {
+    fn from_file(file: &mut VPKFile) -> Self {
         let header = VPKHeaderV1::from(file);
 
         let tree_start = file.stream_position().unwrap();
@@ -84,7 +84,7 @@ impl VPKVersion1 {
         Self { header, tree }
     }
 
-    pub fn read_file(
+    fn read_file(
         self: &Self,
         archive_path: &String,
         vpk_name: &String,
@@ -123,5 +123,80 @@ impl VPKVersion1 {
         assert_eq!(digest.finalize(), entry.crc, "CRC must match");
 
         Some(buf)
+    }
+
+    fn extract_file(
+        self: &Self,
+        archive_path: &String,
+        vpk_name: &String,
+        file_path: &String,
+        output_path: &String,
+    ) -> Result<(), String> {
+        let entry = self
+            .tree
+            .files
+            .get(file_path)
+            .ok_or("File not found in VPK")?;
+        let mut buf: Vec<u8> = Vec::new();
+
+        if entry.preload_bytes > 0 {
+            buf.append(
+                self.tree
+                    .preload
+                    .get(file_path)
+                    .ok_or("Preload data not found in VPK")?
+                    .clone()
+                    .as_mut(),
+            );
+        }
+
+        let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC);
+        let mut digest = crc.digest();
+
+        if entry.entry_length > 0 {
+            let path = Path::new(archive_path).join(format!(
+                "{}_{:0>3}.vpk",
+                vpk_name,
+                entry.archive_index.to_string()
+            ));
+
+            let mut archive_file = File::open(path).or(Err("Failed to open archive file"))?;
+
+            let _ = archive_file.seek(SeekFrom::Start(entry.entry_offset as _));
+
+            let out_path = std::path::Path::new(output_path);
+            if let Some(prefix) = out_path.parent() {
+                std::fs::create_dir_all(prefix).or(Err("Failed to create parent directories"))?;
+            };
+
+            let mut out_file = File::create(out_path).or(Err("Failed to create output file"))?;
+
+            // read chunks of 1MB max into buffer and write to the output file
+            let mut remaining = entry.entry_length as usize;
+            while remaining > 0 {
+                let chunk = archive_file
+                    .read_bytes(1024 * 1024)
+                    .or(Err("Failed to read from archive file"))?;
+                if chunk.len() == 0 {
+                    return Err("Failed to read from archive file".to_string());
+                }
+                out_file
+                    .write_all(&chunk)
+                    .or(Err("Failed to write to output file"))?;
+                remaining -= chunk.len();
+
+                digest.update(&chunk);
+            }
+        }
+
+        assert_eq!(digest.finalize(), entry.crc, "CRC must match");
+
+        Ok(())
+    }
+}
+
+impl From<&mut VPKFile> for VPKVersion1 {
+    fn from(file: &mut VPKFile) -> Self {
+        Self::from_file(file)
     }
 }

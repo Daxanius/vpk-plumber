@@ -1,10 +1,10 @@
 use crate::common::file::{VPKFile, VPKFileReader};
-use crate::common::format::{DirEntry, VPKTree};
+use crate::common::format::{DirEntry, PakFormat, VPKTree};
 use crate::common::lzham::decompress;
 // use crate::common::lzham;
 use crc::{Crc, CRC_32_ISO_HDLC};
 use std::fs::File;
-use std::io::{Seek, SeekFrom};
+use std::io::{Seek, SeekFrom, Write};
 use std::path::Path;
 
 pub const VPK_SIGNATURE_REVPK: u32 = 0x55AA1234;
@@ -170,8 +170,8 @@ pub struct VPKRespawn {
     pub tree: VPKTree<VPKDirectoryEntryRespawn>,
 }
 
-impl VPKRespawn {
-    pub fn new() -> Self {
+impl PakFormat for VPKRespawn {
+    fn new() -> Self {
         Self {
             header: VPKHeaderRespawn {
                 signature: VPK_SIGNATURE_REVPK,
@@ -183,7 +183,7 @@ impl VPKRespawn {
         }
     }
 
-    pub fn from(file: &mut VPKFile) -> Self {
+    fn from_file(file: &mut VPKFile) -> Self {
         let header = VPKHeaderRespawn::from(file);
 
         let tree_start = file.stream_position().unwrap();
@@ -192,7 +192,7 @@ impl VPKRespawn {
         Self { header, tree }
     }
 
-    pub fn read_file(
+    fn read_file(
         self: &Self,
         archive_path: &String,
         vpk_name: &String,
@@ -242,5 +242,92 @@ impl VPKRespawn {
         assert_eq!(digest.finalize(), entry.crc, "CRC must match");
 
         Some(buf)
+    }
+
+    fn extract_file(
+        self: &Self,
+        archive_path: &String,
+        vpk_name: &String,
+        file_path: &String,
+        output_path: &String,
+    ) -> Result<(), String> {
+        let entry: &VPKDirectoryEntryRespawn = self
+            .tree
+            .files
+            .get(file_path)
+            .ok_or("File not found in VPK")?;
+        let mut buf: Vec<u8> = Vec::new();
+
+        if entry.preload_bytes > 0 {
+            buf.append(
+                self.tree
+                    .preload
+                    .get(file_path)
+                    .ok_or("Preload data not found in VPK")?
+                    .clone()
+                    .as_mut(),
+            );
+        }
+
+        let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC);
+        let mut digest = crc.digest();
+
+        for file_part in &entry.file_parts {
+            if file_part.entry_length_uncompressed > 0 {
+                let path = Path::new(archive_path).join(format!(
+                    "{}_{:0>3}.vpk",
+                    vpk_name,
+                    file_part.archive_index.to_string()
+                ));
+
+                let mut archive_file = File::open(path).or(Err("Failed to open archive file"))?;
+
+                let _ = archive_file.seek(SeekFrom::Start(file_part.entry_offset as _));
+
+                let out_path = std::path::Path::new(output_path);
+                if let Some(prefix) = out_path.parent() {
+                    std::fs::create_dir_all(prefix)
+                        .or(Err("Failed to create parent directories"))?;
+                };
+
+                let mut out_file =
+                    File::create(out_path).or(Err("Failed to create output file"))?;
+
+                if file_part.entry_length == file_part.entry_length_uncompressed {
+                    let part = archive_file
+                        .read_bytes(file_part.entry_length as _)
+                        .or(Err("Failed to read from archive file"))?;
+
+                    out_file
+                        .write_all(&part)
+                        .or(Err("Failed to write to output file"))?;
+
+                    digest.update(&part);
+                } else {
+                    let compressed_data = archive_file
+                        .read_bytes(file_part.entry_length as _)
+                        .or(Err("Failed to read from archive file"))?;
+
+                    let decompressed =
+                        decompress(&compressed_data, file_part.entry_length_uncompressed as _);
+
+                    out_file
+                        .write_all(&decompressed)
+                        .or(Err("Failed to write to output file"))?;
+
+                    digest.update(&decompressed);
+                }
+            }
+        }
+
+        assert_eq!(digest.finalize(), entry.crc, "CRC must match");
+
+        Ok(())
+    }
+}
+
+impl From<&mut VPKFile> for VPKRespawn {
+    fn from(file: &mut VPKFile) -> Self {
+        Self::from_file(file)
     }
 }

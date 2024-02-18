@@ -132,3 +132,21 @@ impl DirEntry for VPKDirectoryEntry {
         self.preload_bytes as _
     }
 }
+
+pub trait PakFormat {
+    fn new() -> Self;
+    fn from_file(file: &mut File) -> Self;
+    fn read_file(
+        self: &Self,
+        archive_path: &String,
+        vpk_name: &String,
+        file_path: &String,
+    ) -> Option<Vec<u8>>;
+    fn extract_file(
+        self: &Self,
+        archive_path: &String,
+        vpk_name: &String,
+        file_path: &String,
+        output_path: &String,
+    ) -> Result<(), String>;
+}

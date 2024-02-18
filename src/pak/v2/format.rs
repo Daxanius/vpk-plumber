@@ -2,7 +2,7 @@ use std::io::Seek;
 
 use crate::common::{
     file::{VPKFile, VPKFileReader},
-    format::{VPKDirectoryEntry, VPKTree},
+    format::{VPKDirectoryEntry, PakFormat, VPKTree},
 };
 
 pub const VPK_SIGNATURE_V2: u32 = 0x55AA1234;
@@ -103,15 +103,15 @@ impl VPKHeaderV2 {
 
 pub struct VPKArchiveMD5SectionEntry {
     pub archive_index: u32,
-    pub starting_offset: u32,   // where to start reading bytes
-    pub count: u32,             // how many bytes to check
+    pub starting_offset: u32,  // where to start reading bytes
+    pub count: u32,            // how many bytes to check
     pub md5_checksum: Vec<u8>, // expected checksum. len: 16
 }
 
 pub struct VPKOtherMD5Section {
-    pub tree_checksum: Vec<u8>, // len: 16
+    pub tree_checksum: Vec<u8>,                // len: 16
     pub archive_md5_section_checksum: Vec<u8>, // len: 16
-    pub unknown: Vec<u8>, // len: 16
+    pub unknown: Vec<u8>,                      // len: 16
 }
 impl VPKOtherMD5Section {
     pub fn new() -> Self {
@@ -140,8 +140,8 @@ pub struct VPKVersion2 {
     pub signature_section: Option<VPKSignatureSection>,
 }
 
-impl VPKVersion2 {
-    pub fn new() -> Self {
+impl PakFormat for VPKVersion2 {
+    fn new() -> Self {
         Self {
             header: VPKHeaderV2 {
                 signature: VPK_SIGNATURE_V2,
@@ -160,7 +160,7 @@ impl VPKVersion2 {
         }
     }
 
-    pub fn from(file: &mut VPKFile) -> Self {
+    fn from_file(file: &mut VPKFile) -> Self {
         let header = VPKHeaderV2::from(file);
 
         let tree_start = file.stream_position().unwrap();
@@ -201,11 +201,19 @@ impl VPKVersion2 {
         };
 
         let signature_section = if header.signature_section_size == 296 {
-            let public_key_size = file.read_u32().expect("Failed reading signature section public key size");
-            let public_key = file.read_bytes(public_key_size as _).expect("Failed reading signature section public key");
+            let public_key_size = file
+                .read_u32()
+                .expect("Failed reading signature section public key size");
+            let public_key = file
+                .read_bytes(public_key_size as _)
+                .expect("Failed reading signature section public key");
 
-            let signature_size = file.read_u32().expect("Failed reading signature section signature size");
-            let signature = file.read_bytes(signature_size as _).expect("Failed reading signature section signature");
+            let signature_size = file
+                .read_u32()
+                .expect("Failed reading signature section signature size");
+            let signature = file
+                .read_bytes(signature_size as _)
+                .expect("Failed reading signature section signature");
 
             Some(VPKSignatureSection {
                 public_key_size,
@@ -214,7 +222,9 @@ impl VPKVersion2 {
                 signature,
             })
         } else {
-            let _ = file.seek(std::io::SeekFrom::Current(header.signature_section_size as _));
+            let _ = file.seek(std::io::SeekFrom::Current(
+                header.signature_section_size as _,
+            ));
             None
         };
 
@@ -226,5 +236,30 @@ impl VPKVersion2 {
             other_md5_section,
             signature_section,
         }
+    }
+
+    fn read_file(
+        self: &Self,
+        _archive_path: &String,
+        _vpk_name: &String,
+        _file_path: &String,
+    ) -> Option<Vec<u8>> {
+        todo!()
+    }
+
+    fn extract_file(
+        self: &Self,
+        _archive_path: &String,
+        _vpk_name: &String,
+        _file_path: &String,
+        _output_path: &String,
+    ) -> Result<(), String> {
+        todo!()
+    }
+}
+
+impl From<&mut VPKFile> for VPKVersion2 {
+    fn from(file: &mut VPKFile) -> Self {
+        Self::from_file(file)
     }
 }

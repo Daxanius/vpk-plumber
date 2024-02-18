@@ -8,7 +8,7 @@ mod tests {
         VPKDirectoryEntryRespawn, VPKFilePartEntryRespawn, VPKRespawn,
     };
     use crate::{
-        common::format::VPKDirectoryEntry,
+        common::format::{VPKDirectoryEntry, PakFormat},
         pak::{v1::format::VPKVersion1, v2::format::VPKVersion2},
     };
     use std::{fs::File, io::Seek, path::Path};
@@ -176,6 +176,7 @@ mod tests {
             &String::from("client_mp_colony.bsp.pak000"),
             &String::from("resource/overviews/mp_colony.txt"),
         );
+
         assert_eq!(
             test_file,
             Some(
