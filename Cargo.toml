@@ -11,4 +11,4 @@ rpak = []
 
 [dependencies]
 crc = "3.0.1"
-lzham-alpha-sys = { git = "https://github.com/barnabwhy/lzham-alpha-sys.git", optional = true }
+lzham-alpha-sys = { version = "0.1.0", optional = true }
