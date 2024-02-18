@@ -256,21 +256,29 @@ impl PakFormat for VPKRespawn {
             .files
             .get(file_path)
             .ok_or("File not found in VPK")?;
-        let mut buf: Vec<u8> = Vec::new();
-
-        if entry.preload_bytes > 0 {
-            buf.append(
-                self.tree
-                    .preload
-                    .get(file_path)
-                    .ok_or("Preload data not found in VPK")?
-                    .clone()
-                    .as_mut(),
-            );
-        }
 
         let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC);
         let mut digest = crc.digest();
+
+        let out_path = std::path::Path::new(output_path);
+        if let Some(prefix) = out_path.parent() {
+            std::fs::create_dir_all(prefix).or(Err("Failed to create parent directories"))?;
+        };
+
+        let mut out_file = File::create(out_path).or(Err("Failed to create output file"))?;
+
+        if entry.preload_bytes > 0 {
+            out_file
+                .write_all(
+                    self.tree
+                        .preload
+                        .get(file_path)
+                        .ok_or("Preload data not found in VPK")?
+                        .clone()
+                        .as_mut(),
+                )
+                .or(Err("Failed to write to output file"))?;
+        }
 
         for file_part in &entry.file_parts {
             if file_part.entry_length_uncompressed > 0 {
@@ -283,15 +291,6 @@ impl PakFormat for VPKRespawn {
                 let mut archive_file = File::open(path).or(Err("Failed to open archive file"))?;
 
                 let _ = archive_file.seek(SeekFrom::Start(file_part.entry_offset as _));
-
-                let out_path = std::path::Path::new(output_path);
-                if let Some(prefix) = out_path.parent() {
-                    std::fs::create_dir_all(prefix)
-                        .or(Err("Failed to create parent directories"))?;
-                };
-
-                let mut out_file =
-                    File::create(out_path).or(Err("Failed to create output file"))?;
 
                 if file_part.entry_length == file_part.entry_length_uncompressed {
                     let part = archive_file

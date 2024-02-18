@@ -137,21 +137,28 @@ impl PakFormat for VPKVersion1 {
             .files
             .get(file_path)
             .ok_or("File not found in VPK")?;
-        let mut buf: Vec<u8> = Vec::new();
+
+        let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC);
+        let mut digest = crc.digest();
+
+        let out_path = std::path::Path::new(output_path);
+        if let Some(prefix) = out_path.parent() {
+            std::fs::create_dir_all(prefix).or(Err("Failed to create parent directories"))?;
+        };
+
+        let mut out_file = File::create(out_path).or(Err("Failed to create output file"))?;
 
         if entry.preload_bytes > 0 {
-            buf.append(
+            out_file.write_all(
                 self.tree
                     .preload
                     .get(file_path)
                     .ok_or("Preload data not found in VPK")?
                     .clone()
                     .as_mut(),
-            );
+            )
+            .or(Err("Failed to write to output file"))?;
         }
-
-        let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC);
-        let mut digest = crc.digest();
 
         if entry.entry_length > 0 {
             let path = Path::new(archive_path).join(format!(
@@ -163,13 +170,6 @@ impl PakFormat for VPKVersion1 {
             let mut archive_file = File::open(path).or(Err("Failed to open archive file"))?;
 
             let _ = archive_file.seek(SeekFrom::Start(entry.entry_offset as _));
-
-            let out_path = std::path::Path::new(output_path);
-            if let Some(prefix) = out_path.parent() {
-                std::fs::create_dir_all(prefix).or(Err("Failed to create parent directories"))?;
-            };
-
-            let mut out_file = File::create(out_path).or(Err("Failed to create output file"))?;
 
             // read chunks of 1MB max into buffer and write to the output file
             let mut remaining = entry.entry_length as usize;
