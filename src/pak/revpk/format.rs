@@ -1,7 +1,6 @@
 use crate::common::file::{VPKFile, VPKFileReader};
 use crate::common::format::{DirEntry, PakFormat, VPKTree};
 use crate::common::lzham::decompress;
-// use crate::common::lzham;
 use crc::{Crc, CRC_32_ISO_HDLC};
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
@@ -209,15 +208,30 @@ impl PakFormat for VPKRespawn {
             buf.append(self.tree.preload.get(file_path)?.clone().as_mut());
         }
 
+        if entry.file_parts.len() == 0 {
+            return None;
+        }
+
+        let mut archive_index = entry.file_parts[0].archive_index;
+        let path = Path::new(archive_path).join(format!(
+            "{}_{:0>3}.vpk",
+            vpk_name,
+            archive_index.to_string()
+        ));
+
+        let mut archive_file = File::open(path).or(Err("Failed to open archive file")).ok()?;
+
         for file_part in &entry.file_parts {
             if file_part.entry_length_uncompressed > 0 {
-                let path = Path::new(archive_path).join(format!(
-                    "{}_{:0>3}.vpk",
-                    vpk_name,
-                    file_part.archive_index.to_string()
-                ));
-
-                let mut archive_file = File::open(path).ok()?;
+                if file_part.archive_index != archive_index {
+                    archive_index = file_part.archive_index;
+                    let path = Path::new(archive_path).join(format!(
+                        "{}_{:0>3}.vpk",
+                        vpk_name,
+                        archive_index.to_string()
+                    ));
+                    archive_file = File::open(path).or(Err("Failed to open archive file")).ok()?;
+                }
 
                 let _ = archive_file.seek(SeekFrom::Start(file_part.entry_offset as _));
 
@@ -286,15 +300,30 @@ impl PakFormat for VPKRespawn {
                 .or(Err("Failed to write to output file"))?;
         }
 
+        if entry.file_parts.len() == 0 {
+            return Err("File had no parts".to_string());
+        }
+
+        let mut archive_index = entry.file_parts[0].archive_index;
+        let path = Path::new(archive_path).join(format!(
+            "{}_{:0>3}.vpk",
+            vpk_name,
+            archive_index.to_string()
+        ));
+
+        let mut archive_file = File::open(path).or(Err("Failed to open archive file"))?;
+
         for file_part in &entry.file_parts {
             if file_part.entry_length_uncompressed > 0 {
-                let path = Path::new(archive_path).join(format!(
-                    "{}_{:0>3}.vpk",
-                    vpk_name,
-                    file_part.archive_index.to_string()
-                ));
-
-                let mut archive_file = File::open(path).or(Err("Failed to open archive file"))?;
+                if file_part.archive_index != archive_index {
+                    archive_index = file_part.archive_index;
+                    let path = Path::new(archive_path).join(format!(
+                        "{}_{:0>3}.vpk",
+                        vpk_name,
+                        archive_index.to_string()
+                    ));
+                    archive_file = File::open(path).or(Err("Failed to open archive file"))?;
+                }
 
                 let _ = archive_file.seek(SeekFrom::Start(file_part.entry_offset as _));
 

@@ -139,12 +139,14 @@ pub trait PakFormat {
     fn from_file(file: &mut File) -> Result<Self, String>
     where
         Self: Sized;
+
     fn read_file(
         self: &Self,
         archive_path: &String,
         vpk_name: &String,
         file_path: &String,
     ) -> Option<Vec<u8>>;
+
     fn extract_file(
         self: &Self,
         archive_path: &String,
