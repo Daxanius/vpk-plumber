@@ -2,12 +2,16 @@ use crate::common::file::{VPKFile, VPKFileReader};
 use crate::common::format::{DirEntry, PakFormat, VPKTree};
 use crate::common::lzham::decompress;
 use crc::{Crc, CRC_32_ISO_HDLC};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
 use std::path::Path;
 
+use super::cam::{create_wav_header, get_cam_entry, seek_to_wav_data};
+
 pub const VPK_SIGNATURE_REVPK: u32 = 0x55AA1234;
 pub const VPK_VERSION_REVPK: u32 = 196610;
+pub const RESPAWN_CAM_ENTRY_MAGIC: u32 = 3302889984;
 
 pub struct VPKHeaderRespawn {
     pub signature: u32,
@@ -168,6 +172,61 @@ impl VPKFilePartEntryRespawn {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct VPKRespawnCam {
+    pub entries: HashMap<u64, VPKRespawnCamEntry>,
+}
+
+impl VPKRespawnCam {
+    pub fn from_file(file: &mut VPKFile) -> Result<Self, String> {
+        let mut entries: HashMap<u64, VPKRespawnCamEntry> = HashMap::new();
+
+        let file_len = file
+            .seek(SeekFrom::End(0))
+            .or(Err("Failed to determine length of CAM file"))?;
+        let _ = file
+            .seek(SeekFrom::Start(0))
+            .or(Err("Failed to seek to start of CAM file"))?;
+
+        while file.stream_position().unwrap() < file_len {
+            let entry = VPKRespawnCamEntry {
+                magic: file.read_u32().or(Err("Failed to read magic"))?,
+                original_size: file.read_u32().or(Err("Failed to read original size"))?,
+                compressed_size: file.read_u32().or(Err("Failed to read compressed size"))?,
+                sample_rate: file.read_u24().or(Err("Failed to read sample rate"))?,
+                channels: file.read_u8().or(Err("Failed to read channels"))?,
+                sample_count: file.read_u32().or(Err("Failed to read sample count"))?,
+                header_size: file.read_u32().or(Err("Failed to read header size"))?,
+                vpk_content_offset: file
+                    .read_u64()
+                    .or(Err("Failed to read VPK content offset"))?,
+            };
+
+            if entry.magic == RESPAWN_CAM_ENTRY_MAGIC {
+                entries.insert(entry.vpk_content_offset, entry);
+            }
+        }
+
+        Ok(Self { entries })
+    }
+
+    pub fn find_entry(&self, vpk_content_offset: u64) -> Option<&VPKRespawnCamEntry> {
+        self.entries.get(&vpk_content_offset)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct VPKRespawnCamEntry {
+    pub magic: u32,
+    pub original_size: u32,
+    pub compressed_size: u32,
+    pub sample_rate: u32, // Actually u24
+    pub channels: u8,
+    pub sample_count: u32,
+    pub header_size: u32,
+    pub vpk_content_offset: u64,
+}
+
 pub struct VPKRespawn {
     pub header: VPKHeaderRespawn,
     pub tree: VPKTree<VPKDirectoryEntryRespawn>,
@@ -219,9 +278,47 @@ impl PakFormat for VPKRespawn {
             archive_index.to_string()
         ));
 
-        let mut archive_file = File::open(path).or(Err("Failed to open archive file")).ok()?;
+        let mut archive_file = File::open(&path)
+            .or(Err("Failed to open archive file"))
+            .ok()?;
 
-        for file_part in &entry.file_parts {
+        // We have to do extra processing if it's a wav file
+        let mut expected_len = 0;
+        if file_path.ends_with(".wav") {
+            let cam_path = path.clone().with_extension("vpk.cam");
+
+            let cam_entry: VPKRespawnCamEntry =
+                if let Ok(entry) = get_cam_entry(cam_path, entry.file_parts[0].entry_offset) {
+                    entry
+                } else {
+                    let original_size = entry
+                        .file_parts
+                        .iter()
+                        .map(|e| e.entry_length_uncompressed as u32)
+                        .sum();
+                    VPKRespawnCamEntry {
+                        magic: RESPAWN_CAM_ENTRY_MAGIC,
+                        original_size,
+                        compressed_size: entry
+                            .file_parts
+                            .iter()
+                            .map(|e: &VPKFilePartEntryRespawn| e.entry_length as u32)
+                            .sum(),
+                        sample_rate: 44100,
+                        channels: 1,
+                        sample_count: (original_size - 44 + 8) / 2,
+                        header_size: 44,
+                        vpk_content_offset: entry.file_parts[0].entry_offset,
+                    }
+                };
+
+            expected_len = cam_entry.original_size;
+
+            let mut header = create_wav_header(&cam_entry);
+            buf.append(&mut header);
+        }
+
+        for (i, file_part) in entry.file_parts.iter().enumerate() {
             if file_part.entry_length_uncompressed > 0 {
                 if file_part.archive_index != archive_index {
                     archive_index = file_part.archive_index;
@@ -230,27 +327,34 @@ impl PakFormat for VPKRespawn {
                         vpk_name,
                         archive_index.to_string()
                     ));
-                    archive_file = File::open(path).or(Err("Failed to open archive file")).ok()?;
+                    archive_file = File::open(path)
+                        .or(Err("Failed to open archive file"))
+                        .ok()?;
                 }
 
                 let _ = archive_file.seek(SeekFrom::Start(file_part.entry_offset as _));
 
+                let mut entry_len = file_part.entry_length;
+
+                if i == 0 && file_path.ends_with(".wav") {
+                    entry_len -= seek_to_wav_data(&mut archive_file).ok()?;
+                }
+
                 if file_part.entry_length == file_part.entry_length_uncompressed {
-                    buf.append(
-                        archive_file
-                            .read_bytes(file_part.entry_length as _)
-                            .ok()?
-                            .as_mut(),
-                    );
+                    buf.append(archive_file.read_bytes(entry_len as _).ok()?.as_mut());
                 } else {
-                    let compressed_data =
-                        archive_file.read_bytes(file_part.entry_length as _).ok()?;
+                    let compressed_data = archive_file.read_bytes(entry_len as _).ok()?;
 
                     let mut decompressed =
                         decompress(&compressed_data, file_part.entry_length_uncompressed as _);
                     buf.append(&mut decompressed);
                 }
             }
+        }
+
+        // Truncate WAV files that exceed their expected length
+        if expected_len > 0 && file_path.ends_with(".wav") {
+            buf.truncate(expected_len as _);
         }
 
         let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC);
@@ -288,15 +392,16 @@ impl PakFormat for VPKRespawn {
         let mut out_file = File::create(out_path).or(Err("Failed to create output file"))?;
 
         if entry.preload_bytes > 0 {
+            let preload_data = self
+                .tree
+                .preload
+                .get(file_path)
+                .ok_or("Preload data not found in VPK")?;
+
+            digest.update(&preload_data);
+
             out_file
-                .write_all(
-                    self.tree
-                        .preload
-                        .get(file_path)
-                        .ok_or("Preload data not found in VPK")?
-                        .clone()
-                        .as_mut(),
-                )
+                .write_all(&preload_data)
                 .or(Err("Failed to write to output file"))?;
         }
 
@@ -311,9 +416,49 @@ impl PakFormat for VPKRespawn {
             archive_index.to_string()
         ));
 
-        let mut archive_file = File::open(path).or(Err("Failed to open archive file"))?;
+        let mut archive_file = File::open(&path).or(Err("Failed to open archive file"))?;
 
-        for file_part in &entry.file_parts {
+        // We have to do extra processing if it's a wav file
+        let mut expected_len = 0;
+        if file_path.ends_with(".wav") {
+            let cam_path = path.clone().with_extension("vpk.cam");
+
+            let cam_entry: VPKRespawnCamEntry =
+                if let Ok(entry) = get_cam_entry(cam_path, entry.file_parts[0].entry_offset) {
+                    entry
+                } else {
+                    let original_size = entry
+                        .file_parts
+                        .iter()
+                        .map(|e| e.entry_length_uncompressed as u32)
+                        .sum();
+                    VPKRespawnCamEntry {
+                        magic: RESPAWN_CAM_ENTRY_MAGIC,
+                        original_size,
+                        compressed_size: entry
+                            .file_parts
+                            .iter()
+                            .map(|e: &VPKFilePartEntryRespawn| e.entry_length as u32)
+                            .sum(),
+                        sample_rate: 44100,
+                        channels: 1,
+                        sample_count: (original_size - 44 + 8) / 2,
+                        header_size: 44,
+                        vpk_content_offset: entry.file_parts[0].entry_offset,
+                    }
+                };
+
+            expected_len = cam_entry.original_size;
+
+            let header = create_wav_header(&cam_entry);
+            digest.update(&header);
+            out_file
+                .write_all(&header)
+                .or(Err("Failed to write WAV header"))?;
+        }
+
+        let mut total_len = 0;
+        for (i, file_part) in entry.file_parts.iter().enumerate() {
             if file_part.entry_length_uncompressed > 0 {
                 if file_part.archive_index != archive_index {
                     archive_index = file_part.archive_index;
@@ -327,10 +472,27 @@ impl PakFormat for VPKRespawn {
 
                 let _ = archive_file.seek(SeekFrom::Start(file_part.entry_offset as _));
 
+                let mut entry_len = file_part.entry_length;
+
+                if i == 0 && file_path.ends_with(".wav") {
+                    entry_len -= seek_to_wav_data(&mut archive_file)?;
+                }
+
+                total_len += entry_len;
+
                 if file_part.entry_length == file_part.entry_length_uncompressed {
-                    let part = archive_file
-                        .read_bytes(file_part.entry_length as _)
+                    let mut part = archive_file
+                        .read_bytes(entry_len as _)
                         .or(Err("Failed to read from archive file"))?;
+
+                    // Truncate WAV files that exceed their expected length
+                    if expected_len > 0
+                        && file_path.ends_with(".wav")
+                        && total_len > expected_len as _
+                    {
+                        let new_len = (entry_len as u64) + (expected_len as u64) - total_len;
+                        part.truncate(new_len as _);
+                    }
 
                     out_file
                         .write_all(&part)
@@ -339,7 +501,7 @@ impl PakFormat for VPKRespawn {
                     digest.update(&part);
                 } else {
                     let compressed_data = archive_file
-                        .read_bytes(file_part.entry_length as _)
+                        .read_bytes(entry_len as _)
                         .or(Err("Failed to read from archive file"))?;
 
                     let decompressed =
@@ -354,7 +516,8 @@ impl PakFormat for VPKRespawn {
             }
         }
 
-        if digest.finalize() != entry.crc {
+        // We can't check CRCs on wav files because the CRC wasn't calculated with the actual unpacked data
+        if digest.finalize() != entry.crc && !file_path.ends_with(".wav") {
             Err("CRC must match".to_string())
         } else {
             Ok(())

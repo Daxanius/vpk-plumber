@@ -200,4 +200,47 @@ mod tests {
             "File contents should match ./test_files/titanfall/mp_colony.txt"
         );
     }
+
+    #[cfg(feature = "revpk")]
+    #[test]
+    fn revpk_read_cam() {
+        use crate::pak::revpk::{
+            cam::create_wav_header,
+            format::{VPKRespawnCam, VPKRespawnCamEntry},
+        };
+
+        let path = Path::new("./test_files/titanfall/client_mp_common.bsp.pak000_000.vpk.cam");
+
+        let cam = VPKRespawnCam::from_file(&mut File::open(path).unwrap()).unwrap();
+
+        assert_eq!(cam.entries.len(), 17852, "Should have 17852 entries");
+
+        assert_eq!(
+            cam.find_entry(10688756183),
+            Some(&VPKRespawnCamEntry {
+                magic: 3302889984,
+                original_size: 315436,
+                compressed_size: 29547,
+                sample_rate: 44100,
+                channels: 1,
+                sample_count: 157658,
+                header_size: 44,
+                vpk_content_offset: 10688756183,
+            }),
+            "Entry with vpk content offset 10688756183 should exist",
+        );
+
+        let wav_header = create_wav_header(cam.find_entry(10688756183).unwrap());
+
+        assert_eq!(
+            wav_header,
+            [
+                82, 73, 70, 70, 216, 207, 4, 0, 87, 65, 86, 69, 102, 109, 116, 32, 16, 0, 0, 0, 1,
+                0, 1, 0, 68, 172, 0, 0, 136, 88, 1, 0, 2, 0, 16, 0, 100, 97, 116, 97, 180, 207, 4,
+                0,
+            ]
+            .to_vec(),
+            "WAV header should match",
+        );
+    }
 }

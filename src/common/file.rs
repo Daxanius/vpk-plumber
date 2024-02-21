@@ -8,6 +8,7 @@ pub type VPKFile = File;
 pub trait VPKFileReader {
     fn read_u8(self: &mut Self) -> Result<u8>;
     fn read_u16(self: &mut Self) -> Result<u16>;
+    fn read_u24(self: &mut Self) -> Result<u32>;
     fn read_u32(self: &mut Self) -> Result<u32>;
     fn read_u64(self: &mut Self) -> Result<u64>;
 
@@ -28,6 +29,15 @@ impl VPKFileReader for VPKFile {
         self.read(&mut b)?;
 
         Ok(u16::from_le_bytes(b))
+    }
+
+    fn read_u24(self: &mut Self) -> Result<u32> {
+        let mut b: [u8; 3] = [0, 0, 0];
+        self.read(&mut b)?;
+
+        let b_u32: [u8; 4] = [b[0], b[1], b[2], 0];
+
+        Ok(u32::from_le_bytes(b_u32))
     }
 
     fn read_u32(self: &mut Self) -> Result<u32> {
