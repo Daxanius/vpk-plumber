@@ -22,7 +22,7 @@ sourcepak is a Rust crate that provides support for working with VPK (Valve Pak)
 ### Respawn VPK (Titanfall)
 - [x] Read directory files
 - [x] Read file contents
-- [ ] Read audio files
+- [x] Read audio files
 - [ ] Patch existing VPKs
 - [ ] Write new VPKs
 
