@@ -54,7 +54,7 @@ impl VPKHeaderV1 {
 
         let _ = file.seek(std::io::SeekFrom::Start(pos));
 
-        signature.unwrap_or(0) == VPK_SIGNATURE_V1 && version.unwrap_or(0) == VPK_SIGNATURE_V1
+        signature.unwrap_or(0) == VPK_SIGNATURE_V1 && version.unwrap_or(0) == VPK_VERSION_V1
     }
 }
 

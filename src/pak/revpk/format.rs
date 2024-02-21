@@ -71,7 +71,7 @@ impl VPKHeaderRespawn {
 
         let _ = file.seek(std::io::SeekFrom::Start(pos));
 
-        signature.unwrap_or(0) == VPK_SIGNATURE_REVPK && version.unwrap_or(0) == VPK_SIGNATURE_REVPK
+        signature.unwrap_or(0) == VPK_SIGNATURE_REVPK && version.unwrap_or(0) == VPK_VERSION_REVPK
     }
 }
 

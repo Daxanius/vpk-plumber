@@ -4,6 +4,7 @@ use crate::pak::{v1::format::VPKHeaderV1, v2::format::VPKHeaderV2};
 
 use super::file::VPKFile;
 
+#[derive(Debug, PartialEq)]
 pub enum PakFormat {
     Unknown,
     VPKVersion1,
