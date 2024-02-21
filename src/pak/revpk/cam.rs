@@ -1,5 +1,13 @@
-use std::{collections::HashMap, fs::File, io::{Read, Seek, SeekFrom}, path::PathBuf, sync::RwLock};
+#[cfg(feature = "mem-map")]
+use memmap2::Mmap;
 use once_cell::sync::Lazy;
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{Read, Seek, SeekFrom},
+    path::PathBuf,
+    sync::RwLock,
+};
 
 use crate::common::file::VPKFile;
 
@@ -55,19 +63,37 @@ pub fn create_wav_header(cam_entry: &VPKRespawnCamEntry) -> Vec<u8> {
 }
 
 pub fn seek_to_wav_data(file: &mut VPKFile) -> Result<u64, String> {
-    let pos = file.seek(SeekFrom::Current(44)).or(Err("Failed to seek in file"))?;
+    let pos = file
+        .seek(SeekFrom::Current(44))
+        .or(Err("Failed to seek in file"))?;
     loop {
         let mut b: [u8; 1] = [0];
         let _ = file.read(&mut b);
 
         if b[0] != 0xCB {
-            let res = file.seek(SeekFrom::Current(-1)).or(Err("Failed to seek in file"))?;
+            let res = file
+                .seek(SeekFrom::Current(-1))
+                .or(Err("Failed to seek in file"))?;
             return Ok(44 + res - pos);
         }
     }
 }
 
-static CAM_MAP: Lazy<RwLock<HashMap::<PathBuf, VPKRespawnCam>>> = Lazy::new(|| { RwLock::new(HashMap::new()) });
+#[cfg(feature = "mem-map")]
+pub fn seek_to_wav_data_mem_map(file: &Mmap, start_pos: u64) -> Result<u64, String> {
+    let mut pos = start_pos + 44;
+    loop {
+        let b = file[pos as usize];
+        if b != 0xCB {
+            return Ok(pos - start_pos);
+        }
+
+        pos += 1;
+    }
+}
+
+static CAM_MAP: Lazy<RwLock<HashMap<PathBuf, VPKRespawnCam>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
 
 pub fn get_cam(cam_path: PathBuf) -> Result<VPKRespawnCam, String> {
     {
@@ -92,6 +118,7 @@ pub fn get_cam(cam_path: PathBuf) -> Result<VPKRespawnCam, String> {
 
 pub fn get_cam_entry(cam_path: PathBuf, entry_offset: u64) -> Result<VPKRespawnCamEntry, String> {
     {
+        // Check for existing entry in the cache
         let cam_map = CAM_MAP.read().or(Err("CAM cache couldn't be accessed"))?;
         if cam_map.contains_key(&cam_path) {
             let cam = cam_map.get(&cam_path).unwrap();
@@ -105,10 +132,23 @@ pub fn get_cam_entry(cam_path: PathBuf, entry_offset: u64) -> Result<VPKRespawnC
     }
 
     {
+        // Read the cam file and add it to the cache
+        let mut cam_map = CAM_MAP.write().or(Err("CAM cache couldn't be accessed"))?;
+
+        // Check again in case we acquired the lock from another thread that was reading the same cam
+        if cam_map.contains_key(&cam_path) {
+            let cam = cam_map.get(&cam_path).unwrap();
+
+            if let Some(entry) = cam.find_entry(entry_offset) {
+                return Ok(entry.clone());
+            } else {
+                return Err("Failed to find cam entry".to_string());
+            }
+        }
+
         let mut cam_file = File::open(cam_path.clone()).or(Err("Failed to open CAM file"))?;
         let cam = VPKRespawnCam::from_file(&mut cam_file);
 
-        let mut cam_map = CAM_MAP.write().or(Err("CAM cache couldn't be accessed"))?;
         if let Ok(cam) = cam {
             let cam_entry = if let Some(entry) = cam.find_entry(entry_offset) {
                 Some(entry.clone())

@@ -1,7 +1,10 @@
 use crate::common::file::{VPKFile, VPKFileReader};
 use crate::common::format::{PakFormat, VPKDirectoryEntry, VPKTree};
 use crc::{Crc, CRC_32_ISO_HDLC};
+#[cfg(feature = "mem-map")]
+use memmap2::Mmap;
 use std::cmp::min;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
 use std::path::Path;
@@ -150,6 +153,11 @@ impl PakFormat for VPKVersion1 {
 
         let mut out_file = File::create(out_path).or(Err("Failed to create output file"))?;
 
+        // Set the length of the file
+        out_file
+            .set_len(entry.entry_length as _)
+            .or(Err("Failed to set length of output file"))?;
+
         if entry.preload_bytes > 0 {
             let chunk = self
                 .tree
@@ -203,6 +211,18 @@ impl PakFormat for VPKVersion1 {
         } else {
             Ok(())
         }
+    }
+
+    #[cfg(feature = "mem-map")]
+    fn extract_file_mem_map(
+        self: &Self,
+        _archive_path: &String,
+        _archive_mmaps: &HashMap<u16, Mmap>,
+        _vpk_name: &String,
+        _file_path: &String,
+        _output_path: &String,
+    ) -> Result<(), String> {
+        todo!()
     }
 }
 

@@ -1,4 +1,6 @@
 use crate::common::file::{VPKFile, VPKFileReader};
+#[cfg(feature = "mem-map")]
+use memmap2::Mmap;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Seek, SeekFrom};
@@ -150,6 +152,16 @@ pub trait PakFormat {
     fn extract_file(
         self: &Self,
         archive_path: &String,
+        vpk_name: &String,
+        file_path: &String,
+        output_path: &String,
+    ) -> Result<(), String>;
+
+    #[cfg(feature = "mem-map")]
+    fn extract_file_mem_map(
+        self: &Self,
+        archive_path: &String,
+        archive_mmaps: &HashMap<u16, Mmap>,
         vpk_name: &String,
         file_path: &String,
         output_path: &String,
