@@ -1,5 +1,5 @@
 #[cfg(feature = "mem-map")]
-use memmap2::Mmap;
+use filebuffer::FileBuffer;
 use once_cell::sync::Lazy;
 use std::{
     collections::HashMap,
@@ -80,7 +80,7 @@ pub fn seek_to_wav_data(file: &mut VPKFile) -> Result<u64, String> {
 }
 
 #[cfg(feature = "mem-map")]
-pub fn seek_to_wav_data_mem_map(file: &Mmap, start_pos: u64) -> Result<u64, String> {
+pub fn seek_to_wav_data_mem_map(file: &FileBuffer, start_pos: u64) -> Result<u64, String> {
     let mut pos = start_pos + 44;
     loop {
         let b = file[pos as usize];

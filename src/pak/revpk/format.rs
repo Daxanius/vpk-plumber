@@ -3,7 +3,7 @@ use crate::common::format::{DirEntry, PakFormat, VPKTree};
 use crate::common::lzham::decompress;
 use crc::{Crc, CRC_32_ISO_HDLC};
 #[cfg(feature = "mem-map")]
-use memmap2::Mmap;
+use filebuffer::FileBuffer;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
@@ -466,11 +466,8 @@ impl PakFormat for VPKRespawn {
             if file_part.entry_length_uncompressed > 0 {
                 if file_part.archive_index != archive_index {
                     archive_index = file_part.archive_index;
-                    let path = Path::new(archive_path).join(format!(
-                        "{}_{:0>3}.vpk",
-                        vpk_name,
-                        archive_index.to_string()
-                    ));
+                    let path = Path::new(archive_path)
+                        .join(format!("{}_{:0>3}.vpk", vpk_name, archive_index,));
                     archive_file = File::open(path).or(Err("Failed to open archive file"))?;
                 }
 
@@ -532,7 +529,7 @@ impl PakFormat for VPKRespawn {
     fn extract_file_mem_map(
         self: &Self,
         archive_path: &String,
-        archive_mmaps: &HashMap<u16, Mmap>,
+        archive_mmaps: &HashMap<u16, FileBuffer>,
         vpk_name: &String,
         file_path: &String,
         output_path: &String,
@@ -581,6 +578,11 @@ impl PakFormat for VPKRespawn {
         let mut archive_file = archive_mmaps
             .get(&archive_index)
             .ok_or("Couldn't find memory-mapped file")?;
+
+        archive_file.prefetch(
+            entry.file_parts[0].entry_offset as _,
+            entry.file_parts[0].entry_length as _,
+        );
 
         // We have to do extra processing if it's a wav file
         let mut expected_len = entry
@@ -632,6 +634,17 @@ impl PakFormat for VPKRespawn {
 
         let mut total_len = 0;
         for (i, file_part) in entry.file_parts.iter().enumerate() {
+            // Prefetch next file part
+            if i < entry.file_parts.len() - 1 {
+                archive_mmaps
+                    .get(&archive_index)
+                    .ok_or("Couldn't find memory-mapped file")?
+                    .prefetch(
+                        entry.file_parts[i + 1].entry_offset as _,
+                        entry.file_parts[i + 1].entry_length as _,
+                    );
+            }
+
             if file_part.entry_length_uncompressed > 0 {
                 if file_part.archive_index != archive_index {
                     archive_index = file_part.archive_index;

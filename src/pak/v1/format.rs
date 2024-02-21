@@ -1,13 +1,15 @@
 use crate::common::file::{VPKFile, VPKFileReader};
 use crate::common::format::{PakFormat, VPKDirectoryEntry, VPKTree};
 use crc::{Crc, CRC_32_ISO_HDLC};
-#[cfg(feature = "mem-map")]
-use memmap2::Mmap;
 use std::cmp::min;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
 use std::path::Path;
+
+#[cfg(feature = "mem-map")]
+use filebuffer::FileBuffer;
+#[cfg(feature = "mem-map")]
+use std::collections::HashMap;
 
 pub const VPK_SIGNATURE_V1: u32 = 0x55AA1234;
 pub const VPK_VERSION_V1: u32 = 1;
@@ -217,7 +219,7 @@ impl PakFormat for VPKVersion1 {
     fn extract_file_mem_map(
         self: &Self,
         _archive_path: &String,
-        _archive_mmaps: &HashMap<u16, Mmap>,
+        _archive_mmaps: &HashMap<u16, FileBuffer>,
         _vpk_name: &String,
         _file_path: &String,
         _output_path: &String,
