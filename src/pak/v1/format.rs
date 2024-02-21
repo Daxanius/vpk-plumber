@@ -219,12 +219,80 @@ impl PakFormat for VPKVersion1 {
     fn extract_file_mem_map(
         self: &Self,
         _archive_path: &String,
-        _archive_mmaps: &HashMap<u16, FileBuffer>,
+        archive_mmaps: &HashMap<u16, FileBuffer>,
         _vpk_name: &String,
-        _file_path: &String,
-        _output_path: &String,
+        file_path: &String,
+        output_path: &String,
     ) -> Result<(), String> {
-        todo!()
+        let entry = self
+            .tree
+            .files
+            .get(file_path)
+            .ok_or("File not found in VPK")?;
+
+        let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC);
+        let mut digest = crc.digest();
+
+        let out_path = std::path::Path::new(output_path);
+        if let Some(prefix) = out_path.parent() {
+            std::fs::create_dir_all(prefix).or(Err("Failed to create parent directories"))?;
+        };
+
+        let mut out_file = File::create(out_path).or(Err("Failed to create output file"))?;
+
+        // Set the length of the file
+        out_file
+            .set_len(entry.entry_length as _)
+            .or(Err("Failed to set length of output file"))?;
+
+        if entry.preload_bytes > 0 {
+            let chunk = self
+                .tree
+                .preload
+                .get(file_path)
+                .ok_or("Preload data not found in VPK")?;
+
+            out_file
+                .write_all(&chunk)
+                .or(Err("Failed to write to output file"))?;
+
+            digest.update(&chunk);
+        }
+
+        if entry.entry_length > 0 {
+            let archive_file = archive_mmaps
+                .get(&entry.archive_index)
+                .ok_or("Couldn't find memory-mapped file")?;
+
+            // read chunks of 1MB max into buffer and write to the output file
+            let mut remaining = entry.entry_length as usize;
+            let mut i = entry.entry_offset as usize;
+            while remaining > 0 {
+                let chunk = &archive_file[i..(i + min(1024 * 1024, remaining))];
+                if chunk.len() == 0 {
+                    return Err("Failed to read from archive file".to_string());
+                }
+                out_file
+                    .write_all(chunk)
+                    .or(Err("Failed to write to output file"))?;
+
+                i += chunk.len();
+                
+                if remaining >= chunk.len() {
+                    remaining -= chunk.len();
+                } else {
+                    remaining = 0;
+                }
+
+                digest.update(chunk);
+            }
+        }
+
+        if digest.finalize() != entry.crc {
+            Err("CRC must match".to_string())
+        } else {
+            Ok(())
+        }
     }
 }
 
