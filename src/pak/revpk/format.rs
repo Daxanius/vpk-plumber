@@ -322,6 +322,7 @@ impl PakReader for VPKRespawn {
             buf.append(&mut header);
         }
 
+        let mut total_len = 0;
         for (i, file_part) in entry.file_parts.iter().enumerate() {
             if file_part.entry_length_uncompressed > 0 {
                 if file_part.archive_index != archive_index {
@@ -344,8 +345,21 @@ impl PakReader for VPKRespawn {
                     entry_len -= seek_to_wav_data(&mut archive_file).ok()?;
                 }
 
+                total_len += entry_len;
+
                 if file_part.entry_length == file_part.entry_length_uncompressed {
-                    buf.append(archive_file.read_bytes(entry_len as _).ok()?.as_mut());
+                    let mut part = archive_file.read_bytes(entry_len as _).ok()?;
+
+                    // Truncate WAV files that exceed their expected length
+                    if expected_len > 0
+                        && file_path.ends_with(".wav")
+                        && total_len > expected_len as _
+                    {
+                        let new_len = (entry_len as u64) + (expected_len as u64) - total_len;
+                        part.truncate(new_len as _);
+                    }
+
+                    buf.append(&mut part);
                 } else {
                     let compressed_data = archive_file.read_bytes(entry_len as _).ok()?;
 
@@ -365,7 +379,8 @@ impl PakReader for VPKRespawn {
         let mut digest = crc.digest();
         digest.update(&buf);
 
-        if digest.finalize() != entry.crc {
+        // We can't check CRCs on wav files because the CRC wasn't calculated with the actual unpacked data
+        if digest.finalize() != entry.crc && !file_path.ends_with(".wav") {
             None
         } else {
             Some(buf)
