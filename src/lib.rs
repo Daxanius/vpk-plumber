@@ -3,7 +3,10 @@ pub mod pak;
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "mem-map")]
     use filebuffer::FileBuffer;
+    #[cfg(feature = "mem-map")]
+    use std::collections::HashMap;
 
     #[cfg(feature = "revpk")]
     use crate::pak::revpk::format::{
@@ -17,7 +20,6 @@ mod tests {
         pak::{v1::format::VPKVersion1, v2::format::VPKVersion2},
     };
     use std::{
-        collections::HashMap,
         fs::{remove_dir, remove_file, File},
         io::Seek,
         path::Path,
@@ -111,6 +113,7 @@ mod tests {
         let _ = remove_dir("./test_files/out");
     }
 
+    #[cfg(feature = "mem-map")]
     #[test]
     fn extract_mem_map_single_file_vpk_v1() {
         let path = Path::new("./test_files/single_file_v1_dir.vpk");
@@ -262,6 +265,7 @@ mod tests {
     }
 
     #[cfg(feature = "revpk")]
+    #[cfg(feature = "mem-map")]
     #[test]
     fn extract_mem_map_single_file_vpk_revpk() {
         let path = Path::new("./test_files/single_file_revpk_dir.vpk");
