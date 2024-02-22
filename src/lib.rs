@@ -3,15 +3,27 @@ pub mod pak;
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "mem-map")]
+    use filebuffer::FileBuffer;
+    #[cfg(feature = "mem-map")]
+    use std::collections::HashMap;
+
     #[cfg(feature = "revpk")]
     use crate::pak::revpk::format::{
         VPKDirectoryEntryRespawn, VPKFilePartEntryRespawn, VPKRespawn,
     };
     use crate::{
-        common::format::{PakFormat, VPKDirectoryEntry},
+        common::{
+            file::{VPKFile, VPKFileReader},
+            format::{PakFormat, VPKDirectoryEntry},
+        },
         pak::{v1::format::VPKVersion1, v2::format::VPKVersion2},
     };
-    use std::{fs::File, io::Seek, path::Path};
+    use std::{
+        fs::{remove_dir, remove_file, File},
+        io::Seek,
+        path::Path,
+    };
 
     #[test]
     fn read_empty_vpk_v1() {
@@ -69,11 +81,75 @@ mod tests {
             &String::from("single_file_v1"),
             &String::from("test/file.txt"),
         );
+
         assert_eq!(
             test_file,
             Some(Vec::from("test text")),
             "File contents should be \"test text\""
         );
+
+        let out_path = String::from("./test_files/out/file_v1.txt");
+
+        let _ = vpk.extract_file(
+            &String::from("./test_files"),
+            &String::from("single_file_v1"),
+            &String::from("test/file.txt"),
+            &out_path,
+        );
+
+        assert_eq!(
+            test_file,
+            Some(
+                VPKFile::open(&out_path)
+                    .unwrap()
+                    .read_string()
+                    .unwrap()
+                    .into()
+            ),
+            "File contents should match {}", &out_path
+        );
+
+        let _ = remove_file(out_path);
+        let _ = remove_dir("./test_files/out");
+    }
+
+    #[cfg(feature = "mem-map")]
+    #[test]
+    fn extract_mem_map_single_file_vpk_v1() {
+        let path = Path::new("./test_files/single_file_v1_dir.vpk");
+        let mut file = File::open(path).expect("Failed to open file");
+        let vpk = VPKVersion1::try_from(&mut file).expect("Failed to read VPK file");
+
+        let mut archive_mmaps = HashMap::new();
+        archive_mmaps.insert(
+            0,
+            FileBuffer::open("./test_files/single_file_v1_000.vpk").unwrap(),
+        );
+
+        let out_path = String::from("./test_files/out/file_mem_map_v1.txt");
+
+        let _ = vpk.extract_file_mem_map(
+            &String::from("./test_files"),
+            &archive_mmaps,
+            &String::from("single_file_v1"),
+            &String::from("test/file.txt"),
+            &out_path,
+        );
+
+        assert_eq!(
+            Some(Vec::from("test text")),
+            Some(
+                VPKFile::open(&out_path)
+                    .unwrap()
+                    .read_string()
+                    .unwrap()
+                    .into()
+            ),
+            "File contents should match {}", &out_path
+        );
+
+        let _ = remove_file(out_path);
+        let _ = remove_dir("./test_files/out");
     }
 
     #[test]
@@ -162,6 +238,70 @@ mod tests {
             Some(Vec::from("test text")),
             "File contents should be \"test text\""
         );
+
+        let out_path = String::from("./test_files/out/file_revpk.txt");
+
+        let _ = vpk.extract_file(
+            &String::from("./test_files"),
+            &String::from("single_file_v1"),
+            &String::from("test/file.txt"),
+            &out_path,
+        );
+
+        assert_eq!(
+            test_file,
+            Some(
+                VPKFile::open(&out_path)
+                    .unwrap()
+                    .read_string()
+                    .unwrap()
+                    .into()
+            ),
+            "File contents should match {}", &out_path
+        );
+
+        let _ = remove_file(out_path);
+        let _ = remove_dir("./test_files/out");
+    }
+
+    #[cfg(feature = "revpk")]
+    #[cfg(feature = "mem-map")]
+    #[test]
+    fn extract_mem_map_single_file_vpk_revpk() {
+        let path = Path::new("./test_files/single_file_revpk_dir.vpk");
+        let mut file = File::open(path).expect("Failed to open file");
+        let vpk = VPKRespawn::try_from(&mut file).expect("Failed to read VPK file");
+
+        let mut archive_mmaps = HashMap::new();
+        archive_mmaps.insert(
+            0,
+            FileBuffer::open("./test_files/single_file_revpk_000.vpk").unwrap(),
+        );
+
+        let out_path = String::from("./test_files/out/file_mem_map_revpk.txt");
+
+        let _ = vpk.extract_file_mem_map(
+            &String::from("./test_files"),
+            &archive_mmaps,
+            &String::from("single_file_revpk"),
+            &String::from("test/file.txt"),
+            &out_path,
+        );
+
+        assert_eq!(
+            Some(Vec::from("test text")),
+            Some(
+                VPKFile::open(&out_path)
+                    .unwrap()
+                    .read_string()
+                    .unwrap()
+                    .into()
+            ),
+            "File contents should match {}", &out_path
+        );
+
+        let _ = remove_file(out_path);
+        let _ = remove_dir("./test_files/out");
     }
 
     #[cfg(feature = "revpk")]

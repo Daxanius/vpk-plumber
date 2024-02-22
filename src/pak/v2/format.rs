@@ -5,6 +5,11 @@ use crate::common::{
     format::{PakFormat, VPKDirectoryEntry, VPKTree},
 };
 
+#[cfg(feature = "mem-map")]
+use filebuffer::FileBuffer;
+#[cfg(feature = "mem-map")]
+use std::collections::HashMap;
+
 pub const VPK_SIGNATURE_V2: u32 = 0x55AA1234;
 pub const VPK_VERSION_V2: u32 = 2;
 
@@ -247,6 +252,18 @@ impl PakFormat for VPKVersion2 {
     fn extract_file(
         self: &Self,
         _archive_path: &String,
+        _vpk_name: &String,
+        _file_path: &String,
+        _output_path: &String,
+    ) -> Result<(), String> {
+        todo!()
+    }
+
+    #[cfg(feature = "mem-map")]
+    fn extract_file_mem_map(
+        self: &Self,
+        _archive_path: &String,
+        _archive_mmaps: &HashMap<u16, FileBuffer>,
         _vpk_name: &String,
         _file_path: &String,
         _output_path: &String,

@@ -2,11 +2,15 @@ use crate::common::file::{VPKFile, VPKFileReader};
 use crate::common::format::{DirEntry, PakFormat, VPKTree};
 use crate::common::lzham::decompress;
 use crc::{Crc, CRC_32_ISO_HDLC};
+#[cfg(feature = "mem-map")]
+use filebuffer::FileBuffer;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
 use std::path::Path;
 
+#[cfg(feature = "mem-map")]
+use super::cam::seek_to_wav_data_mem_map;
 use super::cam::{create_wav_header, get_cam_entry, seek_to_wav_data};
 
 pub const VPK_SIGNATURE_REVPK: u32 = 0x55AA1234;
@@ -462,11 +466,8 @@ impl PakFormat for VPKRespawn {
             if file_part.entry_length_uncompressed > 0 {
                 if file_part.archive_index != archive_index {
                     archive_index = file_part.archive_index;
-                    let path = Path::new(archive_path).join(format!(
-                        "{}_{:0>3}.vpk",
-                        vpk_name,
-                        archive_index.to_string()
-                    ));
+                    let path = Path::new(archive_path)
+                        .join(format!("{}_{:0>3}.vpk", vpk_name, archive_index,));
                     archive_file = File::open(path).or(Err("Failed to open archive file"))?;
                 }
 
@@ -503,6 +504,192 @@ impl PakFormat for VPKRespawn {
                     let compressed_data = archive_file
                         .read_bytes(entry_len as _)
                         .or(Err("Failed to read from archive file"))?;
+
+                    let decompressed =
+                        decompress(&compressed_data, file_part.entry_length_uncompressed as _);
+
+                    out_file
+                        .write_all(&decompressed)
+                        .or(Err("Failed to write to output file"))?;
+
+                    digest.update(&decompressed);
+                }
+            }
+        }
+
+        // We can't check CRCs on wav files because the CRC wasn't calculated with the actual unpacked data
+        if digest.finalize() != entry.crc && !file_path.ends_with(".wav") {
+            Err("CRC must match".to_string())
+        } else {
+            Ok(())
+        }
+    }
+
+    #[cfg(feature = "mem-map")]
+    fn extract_file_mem_map(
+        self: &Self,
+        archive_path: &String,
+        archive_mmaps: &HashMap<u16, FileBuffer>,
+        vpk_name: &String,
+        file_path: &String,
+        output_path: &String,
+    ) -> Result<(), String> {
+        let entry: &VPKDirectoryEntryRespawn = self
+            .tree
+            .files
+            .get(file_path)
+            .ok_or("File not found in VPK")?;
+
+        let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC);
+        let mut digest = crc.digest();
+
+        let out_path = std::path::Path::new(output_path);
+        if let Some(prefix) = out_path.parent() {
+            std::fs::create_dir_all(prefix).or(Err("Failed to create parent directories"))?;
+        };
+
+        let mut out_file = File::create(out_path).or(Err("Failed to create output file"))?;
+
+        if entry.preload_bytes > 0 {
+            let preload_data = self
+                .tree
+                .preload
+                .get(file_path)
+                .ok_or("Preload data not found in VPK")?;
+
+            digest.update(&preload_data);
+
+            out_file
+                .write_all(&preload_data)
+                .or(Err("Failed to write to output file"))?;
+        }
+
+        if entry.file_parts.len() == 0 {
+            return Err("File had no parts".to_string());
+        }
+
+        let mut archive_index = entry.file_parts[0].archive_index;
+        let path = Path::new(archive_path).join(format!(
+            "{}_{:0>3}.vpk",
+            vpk_name,
+            archive_index.to_string()
+        ));
+
+        let mut archive_file = archive_mmaps
+            .get(&archive_index)
+            .ok_or("Couldn't find memory-mapped file")?;
+
+        archive_file.prefetch(
+            entry.file_parts[0].entry_offset as _,
+            entry.file_parts[0].entry_length as _,
+        );
+
+        // We have to do extra processing if it's a wav file
+        let mut expected_len = entry
+            .file_parts
+            .iter()
+            .map(|e| e.entry_length_uncompressed as u32)
+            .sum();
+        if file_path.ends_with(".wav") {
+            let cam_path = path.clone().with_extension("vpk.cam");
+
+            let cam_entry: VPKRespawnCamEntry =
+                if let Ok(entry) = get_cam_entry(cam_path, entry.file_parts[0].entry_offset) {
+                    entry
+                } else {
+                    let original_size = entry
+                        .file_parts
+                        .iter()
+                        .map(|e| e.entry_length_uncompressed as u32)
+                        .sum();
+                    VPKRespawnCamEntry {
+                        magic: RESPAWN_CAM_ENTRY_MAGIC,
+                        original_size,
+                        compressed_size: entry
+                            .file_parts
+                            .iter()
+                            .map(|e: &VPKFilePartEntryRespawn| e.entry_length as u32)
+                            .sum(),
+                        sample_rate: 44100,
+                        channels: 1,
+                        sample_count: (original_size - 44 + 8) / 2,
+                        header_size: 44,
+                        vpk_content_offset: entry.file_parts[0].entry_offset,
+                    }
+                };
+
+            expected_len = cam_entry.original_size;
+
+            let header = create_wav_header(&cam_entry);
+            digest.update(&header);
+            out_file
+                .write_all(&header)
+                .or(Err("Failed to write WAV header"))?;
+        }
+
+        // Set the length of the file
+        out_file
+            .set_len(expected_len as _)
+            .or(Err("Failed to set length of output file"))?;
+
+        let mut total_len = 0;
+        for (i, file_part) in entry.file_parts.iter().enumerate() {
+            // Prefetch next file part
+            if i < entry.file_parts.len() - 1 {
+                archive_mmaps
+                    .get(&archive_index)
+                    .ok_or("Couldn't find memory-mapped file")?
+                    .prefetch(
+                        entry.file_parts[i + 1].entry_offset as _,
+                        entry.file_parts[i + 1].entry_length as _,
+                    );
+            }
+
+            if file_part.entry_length_uncompressed > 0 {
+                if file_part.archive_index != archive_index {
+                    archive_index = file_part.archive_index;
+
+                    archive_file = archive_mmaps
+                        .get(&archive_index)
+                        .ok_or("Couldn't find memory-mapped file")?;
+                }
+
+                let mut entry_offset = file_part.entry_offset;
+                let mut entry_len = file_part.entry_length;
+
+                if i == 0 && file_path.ends_with(".wav") {
+                    let seek = seek_to_wav_data_mem_map(&archive_file, entry_offset)?;
+                    entry_offset += seek;
+                    entry_len -= seek;
+                }
+
+                total_len += entry_len;
+
+                if file_part.entry_length == file_part.entry_length_uncompressed {
+                    // Truncate WAV files that exceed their expected length
+                    if expected_len > 0
+                        && file_path.ends_with(".wav")
+                        && total_len > expected_len as _
+                    {
+                        entry_len = (entry_len as u64) + (expected_len as u64) - total_len;
+                    }
+
+                    let part =
+                        &archive_file[(entry_offset as usize)..(entry_offset + entry_len) as usize];
+
+                    out_file
+                        .write_all(part)
+                        .or(Err("Failed to write to output file"))?;
+
+                    digest.update(part);
+                } else {
+                    let compressed_data = archive_file
+                        .get(
+                            file_part.entry_offset as usize
+                                ..(file_part.entry_offset + entry_len) as usize,
+                        )
+                        .ok_or("Failed to read from archive file")?
+                        .to_vec();
 
                     let decompressed =
                         decompress(&compressed_data, file_part.entry_length_uncompressed as _);

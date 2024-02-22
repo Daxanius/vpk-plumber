@@ -8,8 +8,10 @@ exclude = [".vscode", ".github", "test_files"]
 respawn = ["revpk", "rpak"]
 revpk = ["dep:lzham-alpha-sys", "dep:once_cell"]
 rpak = []
+mem-map = ["dep:filebuffer"]
 
 [dependencies]
 crc = "3.0.1"
 lzham-alpha-sys = { version = "0.1.1", optional = true }
+filebuffer = { version = "0.4.0", optional = true }
 once_cell = { version = "1.19.0", optional = true }
