@@ -1,5 +1,5 @@
 use crate::common::file::{VPKFile, VPKFileReader};
-use crate::common::format::{PakFormat, VPKDirectoryEntry, VPKTree};
+use crate::common::format::{PakReader, VPKDirectoryEntry, VPKTree};
 use crc::{Crc, CRC_32_ISO_HDLC};
 use std::cmp::min;
 use std::fs::File;
@@ -68,7 +68,7 @@ pub struct VPKVersion1 {
     pub tree: VPKTree<VPKDirectoryEntry>,
 }
 
-impl PakFormat for VPKVersion1 {
+impl PakReader for VPKVersion1 {
     fn new() -> Self {
         Self {
             header: VPKHeaderV1 {

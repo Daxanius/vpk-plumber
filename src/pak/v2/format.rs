@@ -2,7 +2,7 @@ use std::io::Seek;
 
 use crate::common::{
     file::{VPKFile, VPKFileReader},
-    format::{PakFormat, VPKDirectoryEntry, VPKTree},
+    format::{PakReader, VPKDirectoryEntry, VPKTree},
 };
 
 #[cfg(feature = "mem-map")]
@@ -142,7 +142,7 @@ pub struct VPKVersion2 {
     pub signature_section: Option<VPKSignatureSection>,
 }
 
-impl PakFormat for VPKVersion2 {
+impl PakReader for VPKVersion2 {
     fn new() -> Self {
         Self {
             header: VPKHeaderV2 {

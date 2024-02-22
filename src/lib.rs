@@ -15,7 +15,7 @@ mod tests {
     use crate::{
         common::{
             file::{VPKFile, VPKFileReader},
-            format::{PakFormat, VPKDirectoryEntry},
+            format::{PakReader, VPKDirectoryEntry},
         },
         pak::{v1::format::VPKVersion1, v2::format::VPKVersion2},
     };

@@ -136,7 +136,7 @@ impl DirEntry for VPKDirectoryEntry {
     }
 }
 
-pub trait PakFormat {
+pub trait PakReader {
     fn new() -> Self;
     fn from_file(file: &mut File) -> Result<Self, String>
     where

@@ -1,5 +1,5 @@
 use crate::common::file::{VPKFile, VPKFileReader};
-use crate::common::format::{DirEntry, PakFormat, VPKTree};
+use crate::common::format::{DirEntry, PakReader, VPKTree};
 use crate::common::lzham::decompress;
 use crc::{Crc, CRC_32_ISO_HDLC};
 #[cfg(feature = "mem-map")]
@@ -236,7 +236,7 @@ pub struct VPKRespawn {
     pub tree: VPKTree<VPKDirectoryEntryRespawn>,
 }
 
-impl PakFormat for VPKRespawn {
+impl PakReader for VPKRespawn {
     fn new() -> Self {
         Self {
             header: VPKHeaderRespawn {
