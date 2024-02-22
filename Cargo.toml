@@ -1,5 +1,7 @@
 [package]
 name = "sourcepak"
+description = "A library for reading and writing Source engine package files."
+license = "MIT"
 version = "0.1.0"
 edition = "2021"
 exclude = [".vscode", ".github", "test_files"]
