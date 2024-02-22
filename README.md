@@ -4,6 +4,7 @@ sourcepak is a Rust crate that provides support for working with VPK (Valve Pak)
 ## Features
 - [x] Read and write VPK files
 - [x] Extract files from VPK archives
+- [x] Optionally memory-map archive files for faster speeds (with the `mem-map` feature)
 - [ ] Pack files into VPK archives
 
 ## Supported formats
