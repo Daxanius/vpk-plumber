@@ -1,3 +1,5 @@
+//! Support for the VPK version 1 format.
+
 use std::{fs::File, io::Seek};
 
 use crate::common::{
@@ -10,32 +12,36 @@ use filebuffer::FileBuffer;
 #[cfg(feature = "mem-map")]
 use std::collections::HashMap;
 
+/// The 4-byte signature found in the header of a valid VPK version 2 file.
 pub const VPK_SIGNATURE_V2: u32 = 0x55AA1234;
+/// The 4-byte version found in the header of a valid VPK version 2 file.
 pub const VPK_VERSION_V2: u32 = 2;
 
+/// The header of a VPK version 2 file.
 pub struct VPKHeaderV2 {
+    /// VPK signature. Should be equal to [`VPK_SIGNATURE_V2`].
     pub signature: u32,
+    /// VPK version. Should be equal to [`VPK_VERSION_V2`].
     pub version: u32,
 
-    // A zero based index of the archive this file's data is contained in.
-    // If 0x7fff, the data follows the directory.
+    /// Size of the directory tree in bytes.
     pub tree_size: u32,
 
-    // If ArchiveIndex is 0x7fff, the offset of the file data relative to the end of the directory (see the header for more details).
-    // Otherwise, the offset of the data from the start of the specified archive.
+    /// The size, in bytes, of the section containing file data
     pub file_data_section_size: u32,
 
-    // The size, in bytes, of the section containing MD5 checksums for external archive content
+    /// The size, in bytes, of the section containing MD5 checksums for external archive content
     pub archive_md5_section_size: u32,
 
-    // The size, in bytes, of the section containing MD5 checksums for content in this file (should always be 48)
+    /// The size, in bytes, of the section containing MD5 checksums for content in this file (should always be 48)
     pub other_md5_section_size: u32,
 
-    // The size, in bytes, of the section containing the public key and signature. This is either 0 (CSGO & The Ship) or 296 (HL2, HL2:DM, HL2:EP1, HL2:EP2, HL2:LC, TF2, DOD:S & CS:S)
+    /// The size, in bytes, of the section containing the public key and signature. This is either 0 (CSGO & The Ship) or 296 (HL2, HL2:DM, HL2:EP1, HL2:EP2, HL2:LC, TF2, DOD:S & CS:S)
     pub signature_section_size: u32,
 }
 
 impl VPKHeaderV2 {
+    /// Read the header from a file.
     pub fn from(file: &mut File) -> Result<Self, String> {
         let signature = file
             .read_u32()
@@ -91,6 +97,7 @@ impl VPKHeaderV2 {
         })
     }
 
+    /// Check if a file is in the VPK version 2 format.
     pub fn is_format(file: &mut File) -> bool {
         let pos = file.stream_position().unwrap();
 
@@ -133,12 +140,19 @@ pub struct VPKSignatureSection {
     pub signature: Vec<u8>,
 }
 
+/// The VPK version 2 format.
 pub struct VPKVersion2 {
+    /// The VPK's header.
     pub header: VPKHeaderV2,
+    /// The tree of files in the VPK.
     pub tree: VPKTree<VPKDirectoryEntry>,
+    /// The file data section of the VPK.
     pub file_data: Vec<u8>,
+    /// The archive md5 section of the VPK.
     pub archive_md5_section_entries: Vec<VPKArchiveMD5SectionEntry>,
+    /// The other md5 section of the VPK.
     pub other_md5_section: VPKOtherMD5Section,
+    /// The signature section of the VPK.
     pub signature_section: Option<VPKSignatureSection>,
 }
 

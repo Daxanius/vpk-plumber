@@ -1,3 +1,5 @@
+//! This module contains common structs for the VPK format.
+
 use crate::common::file::VPKFileReader;
 #[cfg(feature = "mem-map")]
 use filebuffer::FileBuffer;
@@ -5,20 +7,27 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Seek, SeekFrom};
 
+/// The terminator sequence (2 bytes) for a [`VPKDirectoryEntry`].
 pub const VPK_ENTRY_TERMINATOR: u16 = 0xFFFF;
 
+/// Trait for common methods on the various directory entry formats used in versions of VPK files.
 pub trait DirEntry {
+    /// Reads a directory entry from a file.
     fn from(file: &mut File) -> Result<Self, String>
     where
         Self: Sized;
+    /// Returns the number of bytes of preload data for an entry, this is 0 if all the data is stored in archives.
     fn get_preload_bytes(self: &Self) -> usize;
 }
 
+/// The file tree parsed from a VPK directory files.
 pub struct VPKTree<DirectoryEntry>
 where
     DirectoryEntry: DirEntry,
 {
+    /// A map pointing every file described in the directory tree to its corresponding entry.
     pub files: HashMap<String, DirectoryEntry>,
+    /// A map pointing every file with preload data to its preload data. A path will only be a valid key if the file at that path has a non-zero amount of preload data.
     pub preload: HashMap<String, Vec<u8>>,
 }
 
@@ -78,23 +87,27 @@ where
     }
 }
 
+/// The entry format used by VPK version 1 and VPK version 2. For the format used by Respawn VPKs see [`VPKDirectoryRespawn`](crate::pak::revpk::format::VPKDirectoryEntryRespawn).
 #[derive(Debug, PartialEq, Eq)]
 pub struct VPKDirectoryEntry {
-    pub crc: u32,           // A 32bit CRC of the file's data.
-    pub preload_bytes: u16, // The number of bytes contained in the index file.
+    /// A 32bit CRC of the file's data. Uses the CRC32 ISO HDLC algorithm.
+    pub crc: u32,
+    /// The number of preload bytes contained in the directory file.
+    pub preload_bytes: u16,
 
-    // A zero based index of the archive this file's data is contained in.
-    // If 0x7fff, the data follows the directory.
+    /// A zero based index of the archive this file's data is contained in.
+    /// If `0x7FFF` (big-endian), the data follows the directory.
     pub archive_index: u16,
 
-    // If ArchiveIndex is 0x7fff, the offset of the file data relative to the end of the directory (see the header for more details).
-    // Otherwise, the offset of the data from the start of the specified archive.
+    /// If `archive_index` is `0x7FFF`, the offset of the file data relative to the end of the directory.
+    /// Otherwise, the offset of the data from the start of the specified archive.
     pub entry_offset: u32,
 
-    // If zero, the entire file is stored in the preload data.
-    // Otherwise, the number of bytes stored starting at EntryOffset.
+    /// If zero, the entire file is stored in the preload data.
+    /// Otherwise, the number of bytes stored starting at `entry_offset`.
     pub entry_length: u32,
-    pub terminator: u16, // Should always be 0xFFFF
+    /// Entry terminator. Should always be 0xFFFF.
+    pub terminator: u16,
 }
 // Note: If a file contains preload data, the preload data immediately follows the above structure. The entire size of a file is PreloadBytes + EntryLength.
 
@@ -139,12 +152,16 @@ impl DirEntry for VPKDirectoryEntry {
     }
 }
 
+/// Trait for reading VPK files.
 pub trait PakReader {
+    /// Create an empty readable VPK which can then be constructed programmatically.
     fn new() -> Self;
+    /// Create a readable VPK from a directory file.
     fn from_file(file: &mut File) -> Result<Self, String>
     where
         Self: Sized;
 
+    /// Read the contents of a file stored in the VPK into memory.
     fn read_file(
         self: &Self,
         archive_path: &String,
@@ -152,6 +169,7 @@ pub trait PakReader {
         file_path: &String,
     ) -> Option<Vec<u8>>;
 
+    /// Extract the contents of a file stored in the VPK to a file system location.
     fn extract_file(
         self: &Self,
         archive_path: &String,
@@ -160,6 +178,8 @@ pub trait PakReader {
         output_path: &String,
     ) -> Result<(), String>;
 
+    /// Extract the contents of a file stored in the VPK to a file system location using memory-mapped files.
+    /// Memory mapped files for every archive used in the extraction must be provided.
     #[cfg(feature = "mem-map")]
     fn extract_file_mem_map(
         self: &Self,

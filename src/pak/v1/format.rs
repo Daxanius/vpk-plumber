@@ -1,3 +1,5 @@
+//! Support for the VPK version 1 format.
+
 use crate::common::file::VPKFileReader;
 use crate::common::format::{PakReader, VPKDirectoryEntry, VPKTree};
 use crc::{Crc, CRC_32_ISO_HDLC};
@@ -12,18 +14,24 @@ use filebuffer::FileBuffer;
 #[cfg(feature = "mem-map")]
 use std::collections::HashMap;
 
+/// The 4-byte signature found in the header of a valid VPK version 1 file.
 pub const VPK_SIGNATURE_V1: u32 = 0x55AA1234;
+/// The 4-byte version found in the header of a valid VPK version 1 file.
 pub const VPK_VERSION_V1: u32 = 1;
 
+/// The header of a VPK version 1 file.
 pub struct VPKHeaderV1 {
+    /// VPK signature. Should be equal to [`VPK_SIGNATURE_V1`].
     pub signature: u32,
+    /// VPK version. Should be equal to [`VPK_VERSION_V1`].
     pub version: u32,
 
-    // Size of the directory tree in bytes
+    /// Size of the directory tree in bytes.
     pub tree_size: u32,
 }
 
 impl VPKHeaderV1 {
+    /// Read the header from a file.
     pub fn from(file: &mut File) -> Result<Self, String> {
         let signature = file
             .read_u32()
@@ -52,6 +60,7 @@ impl VPKHeaderV1 {
         })
     }
 
+    /// Check if a file is in the VPK version 1 format.
     pub fn is_format(file: &mut File) -> bool {
         let pos = file.stream_position().unwrap();
 
@@ -64,8 +73,11 @@ impl VPKHeaderV1 {
     }
 }
 
+/// The VPK version 1 format.
 pub struct VPKVersion1 {
+    /// The VPK's header.
     pub header: VPKHeaderV1,
+    /// The tree of files in the VPK.
     pub tree: VPKTree<VPKDirectoryEntry>,
 }
 

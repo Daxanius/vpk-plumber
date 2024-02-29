@@ -1,3 +1,7 @@
+//! Helper methods for LZHAM compression and decompression.
+//!
+//! Uses the [`lzham_alpha_sys`] crate for bindings to the LZHAM alpha library.
+
 use std::mem::size_of;
 use std::ptr::null;
 

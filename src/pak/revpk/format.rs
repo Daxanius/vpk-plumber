@@ -1,3 +1,5 @@
+//! Support for the Respawn VPK format.
+
 use crate::common::file::VPKFileReader;
 use crate::common::format::{DirEntry, PakReader, VPKTree};
 use crate::common::lzham::decompress;
@@ -13,22 +15,30 @@ use std::path::Path;
 use super::cam::seek_to_wav_data_mem_map;
 use super::cam::{create_wav_header, get_cam_entry, seek_to_wav_data};
 
+/// The 4-byte signature found in the header of a valid Respawn VPK file.
 pub const VPK_SIGNATURE_REVPK: u32 = 0x55AA1234;
+/// The 4-byte version found in the header of a valid Respawn VPK file.
 pub const VPK_VERSION_REVPK: u32 = 196610;
+/// The 4-byte magic found at the start of a CAM file entry.
 pub const RESPAWN_CAM_ENTRY_MAGIC: u32 = 3302889984;
 
+/// The header of a Respawn VPK file.
 pub struct VPKHeaderRespawn {
+    /// VPK signature. Should be equal to [`VPK_SIGNATURE_REVPK`].
     pub signature: u32,
+    /// VPK version. Should be equal to [`VPK_VERSION_REVPK`].
     pub version: u32,
 
-    // Size of the directory tree in bytes
+    /// Size of the directory tree in bytes.
     pub tree_size: u32,
 
-    // Should end up as 0, maybe FileDataSectionSize (see https://developer.valvesoftware.com/wiki/VPK_File_Format#VPK_2)
+    /// An unknown field in the VPK header.
+    // Should end up as 0, maybe FileDataSectionSize (see https://developer.valvesoftware.com/wiki/VPK_File_Format#VPK_2).
     pub unknown: u32,
 }
 
 impl VPKHeaderRespawn {
+    /// Read the header from a file.
     pub fn from(file: &mut File) -> Result<Self, String> {
         let signature = file
             .read_u32()
@@ -67,6 +77,7 @@ impl VPKHeaderRespawn {
         })
     }
 
+    /// Check if a file is in the Respawn VPK format.
     pub fn is_format(file: &mut File) -> bool {
         let pos = file.stream_position().unwrap();
 
@@ -79,6 +90,7 @@ impl VPKHeaderRespawn {
     }
 }
 
+/// Load flags for the Respawn Source engine.
 pub enum EPackedLoadFlags {
     LoadNone,
     LoadVisible = 1 << 0,     // FileSystem visibility?
@@ -89,16 +101,21 @@ pub enum EPackedLoadFlags {
     LoadTextureUnk2 = 1 << 20,
 }
 
+/// Texture flags for the Respawn Source engine.
 pub enum EPackedTextureFlags {
     TextureNone,
     TextureDefault = 1 << 3,
     TextureEnvironmentMap = 1 << 10,
 }
 
+/// The entry format used by Respawn VPKs. For the format used by VPK version 1 and version 2 see [`VPKDirectoryEntry`](crate::common::format::VPKDirectoryEntry).
 #[derive(Debug, PartialEq, Eq)]
 pub struct VPKDirectoryEntryRespawn {
+    /// A 32bit CRC of the file's data. Uses the CRC32 ISO HDLC algorithm.
     pub crc: u32,
+    /// The number of preload bytes contained in the directory file.
     pub preload_bytes: u16,
+    /// The list of file parts defined in the entry.
     pub file_parts: Vec<VPKFilePartEntryRespawn>,
 }
 
@@ -153,13 +170,21 @@ impl DirEntry for VPKDirectoryEntryRespawn {
     }
 }
 
+/// A file part entry within a Respawn VPK directory entry.
 #[derive(Debug, PartialEq, Eq)]
 pub struct VPKFilePartEntryRespawn {
+    /// The archive index this part is contained in.
     pub archive_index: u16,
+    /// The load flags for the file part. (See [`EPackedLoadFlags`])
     pub load_flags: u16,
+    /// The texture flags for the file part. (See [`EPackedTextureFlags`])
     pub texture_flags: u32,
+    /// The offset of the file part in the archive.
     pub entry_offset: u64,
+    /// The length of the file part in the archive.
     pub entry_length: u64,
+    /// The length of the file part when decompressd.
+    /// Will be equal to `entry_length` if the file was not compressed.
     pub entry_length_uncompressed: u64,
 }
 
@@ -176,12 +201,16 @@ impl VPKFilePartEntryRespawn {
     }
 }
 
+/// A Respawn VPK CAM file.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct VPKRespawnCam {
+    /// The entries in the CAM file.
+    /// Map key is VPK archive content offset of the file's first part.
     pub entries: HashMap<u64, VPKRespawnCamEntry>,
 }
 
 impl VPKRespawnCam {
+    /// Read a CAM from a file.
     pub fn from_file(file: &mut File) -> Result<Self, String> {
         let mut entries: HashMap<u64, VPKRespawnCamEntry> = HashMap::new();
 
@@ -214,24 +243,37 @@ impl VPKRespawnCam {
         Ok(Self { entries })
     }
 
+    /// Find the entry in a CAM for a given offset.
     pub fn find_entry(&self, vpk_content_offset: u64) -> Option<&VPKRespawnCamEntry> {
         self.entries.get(&vpk_content_offset)
     }
 }
 
+/// An entry in a CAM.
+///
+/// Some audio files don't have a CAM entry, for this case we can generate a default entry with little effort (see [`Self::default`]).
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct VPKRespawnCamEntry {
+    /// The magic number of the entry. Should equal [`RESPAWN_CAM_ENTRY_MAGIC`].
     pub magic: u32,
+    /// The original size of the file. (The size of the WAV file including its header).
     pub original_size: u32,
+    /// The compressed size of the file. (The size of the OGG file prior to running `audio_installer.exe` on first game launch).
     pub compressed_size: u32,
+    /// The sample rate of the audio in the file. (This is actually a u24 in the file but we use a u32 here for simplicity).
     pub sample_rate: u32, // Actually u24
+    /// The number of channels in the audio file.
     pub channels: u8,
+    /// The number of samples in the audio file.
     pub sample_count: u32,
+    /// The size of the header of the audio file. Should always be 44 as the header of a WAV RIFF file is 44 bytes long.
     pub header_size: u32,
+    /// The VPK content offset of the file's first part.
     pub vpk_content_offset: u64,
 }
 
 impl VPKRespawnCamEntry {
+    /// Create a new CAM entry with default values.
     pub fn new() -> Self {
         Self {
             magic: RESPAWN_CAM_ENTRY_MAGIC,
@@ -245,6 +287,7 @@ impl VPKRespawnCamEntry {
         }
     }
 
+    /// Create a CAM entry with default values for the given directory entry.
     pub fn default(entry: &VPKDirectoryEntryRespawn) -> Self {
         let original_size: u32 = entry
             .file_parts
@@ -269,8 +312,11 @@ impl VPKRespawnCamEntry {
     }
 }
 
+/// The Respawn VPK format.
 pub struct VPKRespawn {
+    /// The VPK's header.
     pub header: VPKHeaderRespawn,
+    /// The tree of files in the VPK.
     pub tree: VPKTree<VPKDirectoryEntryRespawn>,
 }
 
