@@ -28,7 +28,7 @@ sourcepak is a Rust crate that provides support for working with VPK (Valve Pak)
 - [ ] Write new VPKs
 
 ## Documentation
-Coming soon
+Documentation can be found [here](https://docs.rs/sourcepak)
 
 ## Why does this crate exist?
 I originally created the [TFVPKTool](https://github.com/barnabwhy/TFVPKTool) TypeScript library to support reading Respawn VPK files, along with [Harmony VPK Tool](https://github.com/harmonytf/HarmonyVPKTool) using Electron.
