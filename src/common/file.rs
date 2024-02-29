@@ -3,8 +3,6 @@ use std::{
     io::{Read, Result},
 };
 
-pub type VPKFile = File;
-
 pub trait VPKFileReader {
     fn read_u8(self: &mut Self) -> Result<u8>;
     fn read_u16(self: &mut Self) -> Result<u16>;
@@ -16,7 +14,7 @@ pub trait VPKFileReader {
     fn read_bytes(self: &mut Self, count: usize) -> Result<Vec<u8>>;
 }
 
-impl VPKFileReader for VPKFile {
+impl VPKFileReader for File {
     fn read_u8(self: &mut Self) -> Result<u8> {
         let mut b: [u8; 1] = [0];
         self.read(&mut b)?;

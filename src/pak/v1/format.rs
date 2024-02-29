@@ -1,4 +1,4 @@
-use crate::common::file::{VPKFile, VPKFileReader};
+use crate::common::file::VPKFileReader;
 use crate::common::format::{PakReader, VPKDirectoryEntry, VPKTree};
 use crc::{Crc, CRC_32_ISO_HDLC};
 use std::cmp::min;
@@ -24,7 +24,7 @@ pub struct VPKHeaderV1 {
 }
 
 impl VPKHeaderV1 {
-    pub fn from(file: &mut VPKFile) -> Result<Self, String> {
+    pub fn from(file: &mut File) -> Result<Self, String> {
         let signature = file
             .read_u32()
             .or(Err("Could not read header signature from file"))?;
@@ -52,7 +52,7 @@ impl VPKHeaderV1 {
         })
     }
 
-    pub fn is_format(file: &mut VPKFile) -> bool {
+    pub fn is_format(file: &mut File) -> bool {
         let pos = file.stream_position().unwrap();
 
         let signature = file.read_u32();
@@ -81,7 +81,7 @@ impl PakReader for VPKVersion1 {
         }
     }
 
-    fn from_file(file: &mut VPKFile) -> Result<Self, String> {
+    fn from_file(file: &mut File) -> Result<Self, String> {
         let header = VPKHeaderV1::from(file)?;
 
         let tree_start = file.stream_position().unwrap();
@@ -321,8 +321,8 @@ impl PakReader for VPKVersion1 {
     }
 }
 
-impl TryFrom<&mut VPKFile> for VPKVersion1 {
-    fn try_from(file: &mut VPKFile) -> Result<Self, String> {
+impl TryFrom<&mut File> for VPKVersion1 {
+    fn try_from(file: &mut File) -> Result<Self, String> {
         Self::from_file(file)
     }
 

@@ -1,10 +1,8 @@
-use std::fmt;
+use std::{fmt, fs::File};
 
 #[cfg(feature = "revpk")]
 use crate::pak::revpk::format::VPKHeaderRespawn;
 use crate::pak::{v1::format::VPKHeaderV1, v2::format::VPKHeaderV2};
-
-use super::file::VPKFile;
 
 #[derive(PartialEq)]
 pub enum PakFormat {
@@ -27,7 +25,7 @@ impl fmt::Display for PakFormat {
     }
 }
 
-pub fn detect_pak_format(file: &mut VPKFile) -> PakFormat {
+pub fn detect_pak_format(file: &mut File) -> PakFormat {
     if VPKHeaderV1::is_format(file) {
         return PakFormat::VPKVersion1;
     }

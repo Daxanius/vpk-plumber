@@ -1,4 +1,4 @@
-use crate::common::file::{VPKFile, VPKFileReader};
+use crate::common::file::VPKFileReader;
 use crate::common::format::{DirEntry, PakReader, VPKTree};
 use crate::common::lzham::decompress;
 use crc::{Crc, CRC_32_ISO_HDLC};
@@ -29,7 +29,7 @@ pub struct VPKHeaderRespawn {
 }
 
 impl VPKHeaderRespawn {
-    pub fn from(file: &mut VPKFile) -> Result<Self, String> {
+    pub fn from(file: &mut File) -> Result<Self, String> {
         let signature = file
             .read_u32()
             .or(Err("Could not read header signature from file"))?;
@@ -67,7 +67,7 @@ impl VPKHeaderRespawn {
         })
     }
 
-    pub fn is_format(file: &mut VPKFile) -> bool {
+    pub fn is_format(file: &mut File) -> bool {
         let pos = file.stream_position().unwrap();
 
         let signature = file.read_u32();
@@ -113,7 +113,7 @@ impl VPKDirectoryEntryRespawn {
 }
 
 impl DirEntry for VPKDirectoryEntryRespawn {
-    fn from(file: &mut VPKFile) -> Result<Self, String> {
+    fn from(file: &mut File) -> Result<Self, String> {
         let crc = file.read_u32().or(Err("Failed to read CRC"))?;
         let preload_bytes = file.read_u16().or(Err("Failed to read preload bytes"))?;
 
@@ -182,7 +182,7 @@ pub struct VPKRespawnCam {
 }
 
 impl VPKRespawnCam {
-    pub fn from_file(file: &mut VPKFile) -> Result<Self, String> {
+    pub fn from_file(file: &mut File) -> Result<Self, String> {
         let mut entries: HashMap<u64, VPKRespawnCamEntry> = HashMap::new();
 
         let file_len = file
@@ -249,7 +249,7 @@ impl PakReader for VPKRespawn {
         }
     }
 
-    fn from_file(file: &mut VPKFile) -> Result<Self, String> {
+    fn from_file(file: &mut File) -> Result<Self, String> {
         let header = VPKHeaderRespawn::from(file)?;
 
         let tree_start = file.stream_position().unwrap();
@@ -727,8 +727,8 @@ impl PakReader for VPKRespawn {
     }
 }
 
-impl TryFrom<&mut VPKFile> for VPKRespawn {
-    fn try_from(file: &mut VPKFile) -> Result<Self, String> {
+impl TryFrom<&mut File> for VPKRespawn {
+    fn try_from(file: &mut File) -> Result<Self, String> {
         Self::from_file(file)
     }
 

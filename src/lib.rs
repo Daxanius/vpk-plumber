@@ -14,7 +14,7 @@ mod tests {
     };
     use crate::{
         common::{
-            file::{VPKFile, VPKFileReader},
+            file::VPKFileReader,
             format::{PakReader, VPKDirectoryEntry},
         },
         pak::{v1::format::VPKVersion1, v2::format::VPKVersion2},
@@ -100,7 +100,7 @@ mod tests {
         assert_eq!(
             test_file,
             Some(
-                VPKFile::open(&out_path)
+                File::open(&out_path)
                     .unwrap()
                     .read_string()
                     .unwrap()
@@ -156,7 +156,7 @@ mod tests {
         assert_eq!(
             test_file,
             Some(
-                VPKFile::open(&out_path)
+                File::open(&out_path)
                     .unwrap()
                     .read_string()
                     .unwrap()
@@ -195,7 +195,7 @@ mod tests {
         assert_eq!(
             Some(Vec::from("test text")),
             Some(
-                VPKFile::open(&out_path)
+                File::open(&out_path)
                     .unwrap()
                     .read_string()
                     .unwrap()
@@ -307,7 +307,7 @@ mod tests {
         assert_eq!(
             test_file,
             Some(
-                VPKFile::open(&out_path)
+                File::open(&out_path)
                     .unwrap()
                     .read_string()
                     .unwrap()
@@ -347,7 +347,7 @@ mod tests {
         assert_eq!(
             Some(Vec::from("test text")),
             Some(
-                VPKFile::open(&out_path)
+                File::open(&out_path)
                     .unwrap()
                     .read_string()
                     .unwrap()
@@ -363,7 +363,7 @@ mod tests {
     #[cfg(feature = "revpk")]
     #[test]
     fn read_big_vpk_revpk() {
-        use crate::common::file::{VPKFile, VPKFileReader};
+        use crate::common::file::VPKFileReader;
 
         let path = Path::new("./test_files/titanfall/englishclient_mp_colony.bsp.pak000_dir.vpk");
         let mut file = File::open(path).expect("Failed to open file");
@@ -387,7 +387,7 @@ mod tests {
         assert_eq!(
             test_file,
             Some(
-                VPKFile::open(Path::new("./test_files/titanfall/mp_colony.txt"))
+                File::open(Path::new("./test_files/titanfall/mp_colony.txt"))
                     .unwrap()
                     .read_string()
                     .unwrap()

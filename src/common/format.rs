@@ -1,4 +1,4 @@
-use crate::common::file::{VPKFile, VPKFileReader};
+use crate::common::file::VPKFileReader;
 #[cfg(feature = "mem-map")]
 use filebuffer::FileBuffer;
 use std::collections::HashMap;
@@ -30,7 +30,7 @@ where
         }
     }
 
-    pub fn from(file: &mut VPKFile, start: u64, size: u64) -> Result<Self, String> {
+    pub fn from(file: &mut File, start: u64, size: u64) -> Result<Self, String> {
         file.seek(SeekFrom::Start(start))
             .or(Err("Could not seek to start of tree"))?;
 
@@ -109,7 +109,7 @@ impl VPKDirectoryEntry {
 }
 
 impl DirEntry for VPKDirectoryEntry {
-    fn from(file: &mut VPKFile) -> Result<Self, String> {
+    fn from(file: &mut File) -> Result<Self, String> {
         let crc = file.read_u32().or(Err("Failed to read CRC"))?;
         let preload_bytes = file.read_u16().or(Err("Failed to read preload bytes"))?;
         let archive_index = file.read_u16().or(Err("Failed to read archive index"))?;

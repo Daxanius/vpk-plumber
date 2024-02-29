@@ -9,8 +9,6 @@ use std::{
     sync::RwLock,
 };
 
-use crate::common::file::VPKFile;
-
 use super::format::{VPKRespawnCam, VPKRespawnCamEntry};
 
 const SAMPLE_DEPTH: u16 = 16;
@@ -62,7 +60,7 @@ pub fn create_wav_header(cam_entry: &VPKRespawnCamEntry) -> Vec<u8> {
     header.to_vec()
 }
 
-pub fn seek_to_wav_data(file: &mut VPKFile) -> Result<u64, String> {
+pub fn seek_to_wav_data(file: &mut File) -> Result<u64, String> {
     let pos = file
         .seek(SeekFrom::Current(44))
         .or(Err("Failed to seek in file"))?;
