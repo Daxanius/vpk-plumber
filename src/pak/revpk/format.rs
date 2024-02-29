@@ -231,6 +231,44 @@ pub struct VPKRespawnCamEntry {
     pub vpk_content_offset: u64,
 }
 
+impl VPKRespawnCamEntry {
+    pub fn new() -> Self {
+        Self {
+            magic: RESPAWN_CAM_ENTRY_MAGIC,
+            original_size: 0,
+            compressed_size: 0,
+            sample_rate: 0,
+            channels: 0,
+            sample_count: 0,
+            header_size: 0,
+            vpk_content_offset: 0,
+        }
+    }
+
+    pub fn default(entry: &VPKDirectoryEntryRespawn) -> Self {
+        let original_size: u32 = entry
+            .file_parts
+            .iter()
+            .map(|e| e.entry_length_uncompressed as u32)
+            .sum();
+
+        VPKRespawnCamEntry {
+            magic: RESPAWN_CAM_ENTRY_MAGIC,
+            original_size,
+            compressed_size: entry
+                .file_parts
+                .iter()
+                .map(|e: &VPKFilePartEntryRespawn| e.entry_length as u32)
+                .sum(),
+            sample_rate: 44100,
+            channels: 1,
+            sample_count: (original_size - 44 + 8) / 2,
+            header_size: 44,
+            vpk_content_offset: entry.file_parts[0].entry_offset,
+        }
+    }
+}
+
 pub struct VPKRespawn {
     pub header: VPKHeaderRespawn,
     pub tree: VPKTree<VPKDirectoryEntryRespawn>,
@@ -295,25 +333,7 @@ impl PakReader for VPKRespawn {
                 if let Ok(entry) = get_cam_entry(cam_path, entry.file_parts[0].entry_offset) {
                     entry
                 } else {
-                    let original_size = entry
-                        .file_parts
-                        .iter()
-                        .map(|e| e.entry_length_uncompressed as u32)
-                        .sum();
-                    VPKRespawnCamEntry {
-                        magic: RESPAWN_CAM_ENTRY_MAGIC,
-                        original_size,
-                        compressed_size: entry
-                            .file_parts
-                            .iter()
-                            .map(|e: &VPKFilePartEntryRespawn| e.entry_length as u32)
-                            .sum(),
-                        sample_rate: 44100,
-                        channels: 1,
-                        sample_count: (original_size - 44 + 8) / 2,
-                        header_size: 44,
-                        vpk_content_offset: entry.file_parts[0].entry_offset,
-                    }
+                    VPKRespawnCamEntry::default(entry)
                 };
 
             expected_len = cam_entry.original_size;
@@ -446,25 +466,7 @@ impl PakReader for VPKRespawn {
                 if let Ok(entry) = get_cam_entry(cam_path, entry.file_parts[0].entry_offset) {
                     entry
                 } else {
-                    let original_size = entry
-                        .file_parts
-                        .iter()
-                        .map(|e| e.entry_length_uncompressed as u32)
-                        .sum();
-                    VPKRespawnCamEntry {
-                        magic: RESPAWN_CAM_ENTRY_MAGIC,
-                        original_size,
-                        compressed_size: entry
-                            .file_parts
-                            .iter()
-                            .map(|e: &VPKFilePartEntryRespawn| e.entry_length as u32)
-                            .sum(),
-                        sample_rate: 44100,
-                        channels: 1,
-                        sample_count: (original_size - 44 + 8) / 2,
-                        header_size: 44,
-                        vpk_content_offset: entry.file_parts[0].entry_offset,
-                    }
+                    VPKRespawnCamEntry::default(entry)
                 };
 
             expected_len = cam_entry.original_size;
@@ -612,25 +614,7 @@ impl PakReader for VPKRespawn {
                 if let Ok(entry) = get_cam_entry(cam_path, entry.file_parts[0].entry_offset) {
                     entry
                 } else {
-                    let original_size = entry
-                        .file_parts
-                        .iter()
-                        .map(|e| e.entry_length_uncompressed as u32)
-                        .sum();
-                    VPKRespawnCamEntry {
-                        magic: RESPAWN_CAM_ENTRY_MAGIC,
-                        original_size,
-                        compressed_size: entry
-                            .file_parts
-                            .iter()
-                            .map(|e: &VPKFilePartEntryRespawn| e.entry_length as u32)
-                            .sum(),
-                        sample_rate: 44100,
-                        channels: 1,
-                        sample_count: (original_size - 44 + 8) / 2,
-                        header_size: 44,
-                        vpk_content_offset: entry.file_parts[0].entry_offset,
-                    }
+                    VPKRespawnCamEntry::default(entry)
                 };
 
             expected_len = cam_entry.original_size;
