@@ -1,6 +1,7 @@
 [package]
 name = "sourcepak"
 description = "A library for reading and writing Source engine package files."
+repository = "https://github.com/barnabwhy/sourcepak-rs/"
 license = "MIT"
 version = "0.1.1"
 edition = "2021"
