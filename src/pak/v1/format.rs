@@ -4,6 +4,7 @@ use crc::{Crc, CRC_32_ISO_HDLC};
 use std::cmp::min;
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
+use std::mem;
 use std::path::Path;
 
 #[cfg(feature = "mem-map")]
@@ -103,15 +104,27 @@ impl PakReader for VPKVersion1 {
         }
 
         if entry.entry_length > 0 {
-            let path = Path::new(archive_path).join(format!(
-                "{}_{:0>3}.vpk",
-                vpk_name,
-                entry.archive_index.to_string()
-            ));
+            let mut archive_file = if entry.archive_index == 0xFF7F {
+                let path = Path::new(archive_path).join(format!("{}_dir.vpk", vpk_name));
 
-            let mut archive_file = File::open(path).ok()?;
+                let mut archive_file = File::open(path).ok()?;
+                let _ = archive_file.seek(SeekFrom::Start(
+                    mem::size_of::<VPKHeaderV1>() as u64
+                        + self.header.tree_size as u64
+                        + entry.entry_offset as u64,
+                ));
+                archive_file
+            } else {
+                let path = Path::new(archive_path).join(format!(
+                    "{}_{:0>3}.vpk",
+                    vpk_name,
+                    entry.archive_index.to_string()
+                ));
 
-            let _ = archive_file.seek(SeekFrom::Start(entry.entry_offset as _));
+                let mut archive_file = File::open(path).ok()?;
+                let _ = archive_file.seek(SeekFrom::Start(entry.entry_offset as _));
+                archive_file
+            };
 
             buf.append(
                 archive_file
@@ -175,15 +188,27 @@ impl PakReader for VPKVersion1 {
         }
 
         if entry.entry_length > 0 {
-            let path = Path::new(archive_path).join(format!(
-                "{}_{:0>3}.vpk",
-                vpk_name,
-                entry.archive_index.to_string()
-            ));
+            let mut archive_file = if entry.archive_index == 0xFF7F {
+                let path = Path::new(archive_path).join(format!("{}_dir.vpk", vpk_name));
 
-            let mut archive_file = File::open(path).or(Err("Failed to open archive file"))?;
+                let mut archive_file = File::open(path).or(Err("Failed to open archive file"))?;
+                let _ = archive_file.seek(SeekFrom::Start(
+                    mem::size_of::<VPKHeaderV1>() as u64
+                        + self.header.tree_size as u64
+                        + entry.entry_offset as u64,
+                ));
+                archive_file
+            } else {
+                let path = Path::new(archive_path).join(format!(
+                    "{}_{:0>3}.vpk",
+                    vpk_name,
+                    entry.archive_index.to_string()
+                ));
 
-            let _ = archive_file.seek(SeekFrom::Start(entry.entry_offset as _));
+                let mut archive_file = File::open(path).or(Err("Failed to open archive file"))?;
+                let _ = archive_file.seek(SeekFrom::Start(entry.entry_offset as _));
+                archive_file
+            };
 
             // read chunks of 1MB max into buffer and write to the output file
             let mut remaining = entry.entry_length as usize;
@@ -277,7 +302,7 @@ impl PakReader for VPKVersion1 {
                     .or(Err("Failed to write to output file"))?;
 
                 i += chunk.len();
-                
+
                 if remaining >= chunk.len() {
                     remaining -= chunk.len();
                 } else {

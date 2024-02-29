@@ -113,6 +113,62 @@ mod tests {
         let _ = remove_dir("./test_files/out");
     }
 
+    #[test]
+    fn read_single_file_eof_data_vpk_v1() {
+        let path = Path::new("./test_files/single_file_eof_data_v1_dir.vpk");
+        let mut file = File::open(path).expect("Failed to open file");
+        let vpk = VPKVersion1::try_from(&mut file).expect("Failed to read VPK file");
+        assert_eq!(vpk.tree.files.len(), 1, "VPK tree should have 1 entry");
+        assert_eq!(
+            vpk.tree.files.get("test/file.txt"),
+            Some(&VPKDirectoryEntry {
+                crc: 0x4570FA16,
+                preload_bytes: 0,
+                archive_index: 0xFF7F,
+                entry_length: 9,
+                entry_offset: 0,
+                terminator: 0xFFFF,
+            }),
+            "File \"test/file.txt\" should exist"
+        );
+
+        let test_file = vpk.read_file(
+            &String::from("./test_files"),
+            &String::from("single_file_eof_data_v1"),
+            &String::from("test/file.txt"),
+        );
+
+        assert_eq!(
+            test_file,
+            Some(Vec::from("test text")),
+            "File contents should be \"test text\""
+        );
+
+        let out_path = String::from("./test_files/out/file_v1.txt");
+
+        let _ = vpk.extract_file(
+            &String::from("./test_files"),
+            &String::from("single_file_eof_data_v1"),
+            &String::from("test/file.txt"),
+            &out_path,
+        );
+
+        assert_eq!(
+            test_file,
+            Some(
+                VPKFile::open(&out_path)
+                    .unwrap()
+                    .read_string()
+                    .unwrap()
+                    .into()
+            ),
+            "File contents should match {}", &out_path
+        );
+
+        let _ = remove_file(out_path);
+        let _ = remove_dir("./test_files/out");
+    }
+
     #[cfg(feature = "mem-map")]
     #[test]
     fn extract_mem_map_single_file_vpk_v1() {
