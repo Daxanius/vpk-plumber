@@ -14,7 +14,8 @@ pub trait DirEntry {
     fn get_preload_bytes(self: &Self) -> usize;
 }
 
-pub struct VPKTree<DirectoryEntry> {
+pub struct VPKTree<DirectoryEntry>
+    where DirectoryEntry: DirEntry {
     pub files: HashMap<String, DirectoryEntry>,
     pub preload: HashMap<String, Vec<u8>>,
 }
