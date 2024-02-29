@@ -15,7 +15,9 @@ pub trait DirEntry {
 }
 
 pub struct VPKTree<DirectoryEntry>
-    where DirectoryEntry: DirEntry {
+where
+    DirectoryEntry: DirEntry,
+{
     pub files: HashMap<String, DirectoryEntry>,
     pub preload: HashMap<String, Vec<u8>>,
 }
