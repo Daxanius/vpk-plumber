@@ -93,6 +93,12 @@ pub fn seek_to_wav_data_mem_map(file: &FileBuffer, start_pos: u64) -> Result<u64
 static CAM_MAP: Lazy<RwLock<HashMap<PathBuf, VPKRespawnCam>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
 
+pub fn clear_cam_cache() -> Result<(), String> {
+    let mut cam_map = CAM_MAP.write().or(Err("CAM cache couldn't be accessed"))?;
+    cam_map.clear();
+    Ok(())
+}
+
 pub fn get_cam(cam_path: PathBuf) -> Result<VPKRespawnCam, String> {
     {
         let cam_map = CAM_MAP.read().or(Err("CAM cache couldn't be accessed"))?;
