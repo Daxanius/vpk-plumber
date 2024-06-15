@@ -6,7 +6,7 @@ use crate::common::lzham::decompress;
 use crc::{Crc, CRC_32_ISO_HDLC};
 #[cfg(feature = "mem-map")]
 use filebuffer::FileBuffer;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
 use std::path::Path;
@@ -776,6 +776,40 @@ impl VPKRespawn {
 
         let cam = VPKRespawnCam::from_file(&mut cam_file)?;
         self.archive_cams.insert(archive_index, cam);
+
+        Ok(())
+    }
+
+    /// Reads all CAM files for this VPK and adds them to the map of parsed CAMs for this VPK
+    pub fn read_all_cams(
+        self: &mut Self,
+        archive_path: &String,
+        vpk_name: &String,
+    ) -> Result<(), String> {
+        let mut archive_indices = HashSet::<u16>::new();
+        for (_, entry) in self.tree.files.iter_mut() {
+            let archive_index = entry.file_parts[0].archive_index;
+            archive_indices.insert(archive_index);
+        }
+
+        let path = Path::new(archive_path);
+        for archive_index in archive_indices {
+            if !self.archive_cams.contains_key(&archive_index) {
+                let cam_path = path.join(format!(
+                    "{}_{:0>3}.vpk.cam",
+                    vpk_name,
+                    archive_index.to_string()
+                ));
+
+                self.read_cam(
+                    archive_index,
+                    &cam_path
+                        .to_str()
+                        .ok_or("Failed to determine CAM path.")?
+                        .to_string(),
+                )?;
+            }
+        }
 
         Ok(())
     }
