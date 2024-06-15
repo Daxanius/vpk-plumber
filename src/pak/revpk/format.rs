@@ -787,9 +787,11 @@ impl VPKRespawn {
         vpk_name: &String,
     ) -> Result<(), String> {
         let mut archive_indices = HashSet::<u16>::new();
-        for (_, entry) in self.tree.files.iter_mut() {
+        for (path, entry) in self.tree.files.iter_mut() {
             let archive_index = entry.file_parts[0].archive_index;
-            archive_indices.insert(archive_index);
+            if path.ends_with(".wav") {
+                archive_indices.insert(archive_index);
+            }
         }
 
         let mut res = Ok(());
