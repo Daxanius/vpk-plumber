@@ -13,7 +13,7 @@ use std::path::Path;
 
 #[cfg(feature = "mem-map")]
 use super::cam::seek_to_wav_data_mem_map;
-use super::cam::{create_wav_header, get_cam_entry, seek_to_wav_data};
+use super::cam::{create_wav_header, seek_to_wav_data};
 
 /// The 4-byte signature found in the header of a valid Respawn VPK file.
 pub const VPK_SIGNATURE_REVPK: u32 = 0x55AA1234;
@@ -318,6 +318,8 @@ pub struct VPKRespawn {
     pub header: VPKHeaderRespawn,
     /// The tree of files in the VPK.
     pub tree: VPKTree<VPKDirectoryEntryRespawn>,
+    /// The parsed CAM files for this VPK (external files, not included int dir.vpk file)
+    pub archive_cams: HashMap<u16, VPKRespawnCam>,
 }
 
 impl PakReader for VPKRespawn {
@@ -330,6 +332,7 @@ impl PakReader for VPKRespawn {
                 unknown: 0,
             },
             tree: VPKTree::new(),
+            archive_cams: HashMap::new(),
         }
     }
 
@@ -339,7 +342,13 @@ impl PakReader for VPKRespawn {
         let tree_start = file.stream_position().unwrap();
         let tree = VPKTree::from(file, tree_start, header.tree_size.into())?;
 
-        Ok(Self { header, tree })
+        let archive_cams = HashMap::new();
+
+        Ok(Self {
+            header,
+            tree,
+            archive_cams,
+        })
     }
 
     fn read_file(
@@ -373,14 +382,15 @@ impl PakReader for VPKRespawn {
         // We have to do extra processing if it's a wav file
         let mut expected_len = 0;
         if file_path.ends_with(".wav") {
-            let cam_path = path.clone().with_extension("vpk.cam");
-
-            let cam_entry: VPKRespawnCamEntry =
-                if let Ok(entry) = get_cam_entry(cam_path, entry.file_parts[0].entry_offset) {
-                    entry
+            let cam_entry = if let Some(cam) = self.archive_cams.get(&archive_index) {
+                if let Some(cam_entry) = cam.find_entry(entry.file_parts[0].entry_offset) {
+                    cam_entry.to_owned()
                 } else {
                     VPKRespawnCamEntry::default(entry)
-                };
+                }
+            } else {
+                VPKRespawnCamEntry::default(entry)
+            };
 
             expected_len = cam_entry.original_size;
 
@@ -506,14 +516,15 @@ impl PakReader for VPKRespawn {
         // We have to do extra processing if it's a wav file
         let mut expected_len = 0;
         if file_path.ends_with(".wav") {
-            let cam_path = path.clone().with_extension("vpk.cam");
-
-            let cam_entry: VPKRespawnCamEntry =
-                if let Ok(entry) = get_cam_entry(cam_path, entry.file_parts[0].entry_offset) {
-                    entry
+            let cam_entry = if let Some(cam) = self.archive_cams.get(&archive_index) {
+                if let Some(cam_entry) = cam.find_entry(entry.file_parts[0].entry_offset) {
+                    cam_entry.to_owned()
                 } else {
                     VPKRespawnCamEntry::default(entry)
-                };
+                }
+            } else {
+                VPKRespawnCamEntry::default(entry)
+            };
 
             expected_len = cam_entry.original_size;
 
@@ -632,7 +643,7 @@ impl PakReader for VPKRespawn {
         }
 
         let mut archive_index = entry.file_parts[0].archive_index;
-        let path = Path::new(archive_path).join(format!(
+        let _path = Path::new(archive_path).join(format!(
             "{}_{:0>3}.vpk",
             vpk_name,
             archive_index.to_string()
@@ -654,14 +665,15 @@ impl PakReader for VPKRespawn {
             .map(|e| e.entry_length_uncompressed as u32)
             .sum();
         if file_path.ends_with(".wav") {
-            let cam_path = path.clone().with_extension("vpk.cam");
-
-            let cam_entry: VPKRespawnCamEntry =
-                if let Ok(entry) = get_cam_entry(cam_path, entry.file_parts[0].entry_offset) {
-                    entry
+            let cam_entry = if let Some(cam) = self.archive_cams.get(&archive_index) {
+                if let Some(cam_entry) = cam.find_entry(entry.file_parts[0].entry_offset) {
+                    cam_entry.to_owned()
                 } else {
                     VPKRespawnCamEntry::default(entry)
-                };
+                }
+            } else {
+                VPKRespawnCamEntry::default(entry)
+            };
 
             expected_len = cam_entry.original_size;
 
@@ -754,6 +766,18 @@ impl PakReader for VPKRespawn {
         } else {
             Ok(())
         }
+    }
+}
+
+impl VPKRespawn {
+    /// Reads a CAM file and adds it to the map of parsed CAMs for this VPK
+    pub fn read_cam(self: &mut Self, archive_index: u16, cam_path: &String) -> Result<(), String> {
+        let mut cam_file = File::open(cam_path).or(Err("Failed to open CAM file"))?;
+
+        let cam = VPKRespawnCam::from_file(&mut cam_file)?;
+        self.archive_cams.insert(archive_index, cam);
+
+        Ok(())
     }
 }
 
