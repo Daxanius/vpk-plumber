@@ -2,7 +2,7 @@
 
 use std::{
     fs::File,
-    io::{Read, Result},
+    io::{Read, Result, Write},
 };
 
 /// Trait for reading data from binary files.
@@ -85,5 +85,78 @@ impl VPKFileReader for File {
         buffer.truncate(size);
 
         Ok(buffer)
+    }
+}
+
+/// Trait for writing data to binary files.
+///
+/// Always uses little-endian byte order. Moves cursor forward after writing.
+pub trait VPKFileWriter {
+    /// Writes a single byte to the file from a [`u8`].
+    fn write_u8(self: &mut Self, val: u8) -> Result<()>;
+    /// Writes 2 bytes to the file from a [`u16`].
+    fn write_u16(self: &mut Self, val: u16) -> Result<()>;
+    /// Writes 3 bytes to the file from a [`u32`].
+    fn write_u24(self: &mut Self, val: u32) -> Result<()>;
+    /// Writes 4 bytes to the file from a [`u32`].
+    fn write_u32(self: &mut Self, val: u32) -> Result<()>;
+    /// Writes 8 bytes to the file from a [`u64`].
+    fn write_u64(self: &mut Self, val: u64) -> Result<()>;
+
+    /// Writes a null-terminated string to the file.
+    fn write_string(self: &mut Self, str: &String) -> Result<()>;
+    /// Writes a number of bytes to the file from a [`Vec<u8>`].
+    fn write_bytes(self: &mut Self, bytes: &Vec<u8>) -> Result<()>;
+}
+
+impl VPKFileWriter for File {
+    fn write_u8(self: &mut Self, val: u8) -> Result<()> {
+        let b = u8::to_le_bytes(val);
+        self.write_all(&b)?;
+
+        Ok(())
+    }
+
+    fn write_u16(self: &mut Self, val: u16) -> Result<()> {
+        let b = u16::to_le_bytes(val);
+        self.write_all(&b)?;
+
+        Ok(())
+    }
+
+    fn write_u24(self: &mut Self, val: u32) -> Result<()> {
+        let b = u32::to_le_bytes(val);
+        self.write(&b[0..3])?;
+
+        Ok(())
+    }
+
+    fn write_u32(self: &mut Self, val: u32) -> Result<()> {
+        let b = u32::to_le_bytes(val);
+        self.write_all(&b)?;
+
+        Ok(())
+    }
+
+    fn write_u64(self: &mut Self, val: u64) -> Result<()> {
+        let b = u64::to_le_bytes(val);
+        self.write_all(&b)?;
+
+        Ok(())
+    }
+
+    fn write_string(self: &mut Self, str: &String) -> Result<()> {
+        let b = str.as_bytes();
+        self.write_all(&b)?;
+
+        self.write_u8(0)?;
+
+        Ok(())
+    }
+
+    fn write_bytes(self: &mut Self, bytes: &Vec<u8>) -> Result<()> {
+        self.write_all(bytes)?;
+
+        Ok(())
     }
 }
