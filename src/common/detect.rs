@@ -27,7 +27,7 @@ impl fmt::Display for PakFormat {
             PakFormat::VPKVersion2 => "VPK Version 2",
             PakFormat::VPKRespawn => "VPK Respawn",
         };
-        
+
         write!(f, "{}", str)
     }
 }

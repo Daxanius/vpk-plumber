@@ -772,7 +772,10 @@ impl PakReader for VPKRespawn {
 impl VPKRespawn {
     /// Reads a CAM file and adds it to the map of parsed CAMs for this VPK
     pub fn read_cam(self: &mut Self, archive_index: u16, cam_path: &String) -> Result<(), String> {
-        let mut cam_file = File::open(cam_path).or(Err(format!("Failed to open CAM file for archive {}", archive_index)))?;
+        let mut cam_file = File::open(cam_path).or(Err(format!(
+            "Failed to open CAM file for archive {}",
+            archive_index
+        )))?;
 
         let cam = VPKRespawnCam::from_file(&mut cam_file)?;
         self.archive_cams.insert(archive_index, cam);
@@ -799,21 +802,25 @@ impl VPKRespawn {
         let path = Path::new(archive_path);
         for archive_index in archive_indices {
             if !self.archive_cams.contains_key(&archive_index) {
-                let cam_path = path.join(format!(
-                    "{}_{:0>3}.vpk.cam",
-                    vpk_name,
-                    archive_index.to_string()
-                )).to_str().ok_or(format!("Failed to determine CAM path for archive {}", archive_index))?.to_string();
-                
-                match self.read_cam(
-                    archive_index,
-                    &cam_path,
-                ) {
+                let cam_path = path
+                    .join(format!(
+                        "{}_{:0>3}.vpk.cam",
+                        vpk_name,
+                        archive_index.to_string()
+                    ))
+                    .to_str()
+                    .ok_or(format!(
+                        "Failed to determine CAM path for archive {}",
+                        archive_index
+                    ))?
+                    .to_string();
+
+                match self.read_cam(archive_index, &cam_path) {
                     Ok(_) => (),
                     Err(err) => {
                         res = match res {
                             Ok(_) => Err(format!("Encountered erors reading CAM files: {}", err)),
-                            Err(org) => Err(format!("{}, {}", org,err)),
+                            Err(org) => Err(format!("{}, {}", org, err)),
                         };
                     }
                 };
