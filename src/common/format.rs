@@ -17,7 +17,7 @@ pub trait DirEntry {
     where
         Self: Sized;
     /// Returns the number of bytes of preload data for an entry, this is 0 if all the data is stored in archives.
-    fn get_preload_bytes(self: &Self) -> usize;
+    fn get_preload_length(self: &Self) -> usize;
 }
 
 /// The file tree parsed from a VPK directory files.
@@ -70,10 +70,10 @@ where
 
                     let entry = DirectoryEntry::from(file)?;
 
-                    if entry.get_preload_bytes() > 0 {
+                    if entry.get_preload_length() > 0 {
                         tree.preload.insert(
                             file_path.clone(),
-                            file.read_bytes(entry.get_preload_bytes())
+                            file.read_bytes(entry.get_preload_length())
                                 .or(Err("Failed to read preload data"))?,
                         );
                     }
@@ -93,7 +93,7 @@ pub struct VPKDirectoryEntry {
     /// A 32bit CRC of the file's data. Uses the CRC32 ISO HDLC algorithm.
     pub crc: u32,
     /// The number of preload bytes contained in the directory file.
-    pub preload_bytes: u16,
+    pub preload_length: u16,
 
     /// A zero based index of the archive this file's data is contained in.
     /// If `0x7FFF` (big-endian), the data follows the directory.
@@ -115,7 +115,7 @@ impl VPKDirectoryEntry {
     pub fn new() -> Self {
         Self {
             crc: 0,
-            preload_bytes: 0,
+            preload_length: 0,
             archive_index: 0,
             entry_offset: 0,
             entry_length: 0,
@@ -127,7 +127,7 @@ impl VPKDirectoryEntry {
 impl DirEntry for VPKDirectoryEntry {
     fn from(file: &mut File) -> Result<Self, String> {
         let crc = file.read_u32().or(Err("Failed to read CRC"))?;
-        let preload_bytes = file.read_u16().or(Err("Failed to read preload bytes"))?;
+        let preload_length = file.read_u16().or(Err("Failed to read preload bytes"))?;
         let archive_index = file.read_u16().or(Err("Failed to read archive index"))?;
         let entry_offset = file.read_u32().or(Err("Failed to read entry offset"))?;
         let entry_length = file.read_u32().or(Err("Failed to read entry length"))?;
@@ -139,7 +139,7 @@ impl DirEntry for VPKDirectoryEntry {
 
         Ok(Self {
             crc,
-            preload_bytes,
+            preload_length,
             archive_index,
             entry_offset,
             entry_length,
@@ -147,8 +147,8 @@ impl DirEntry for VPKDirectoryEntry {
         })
     }
 
-    fn get_preload_bytes(self: &Self) -> usize {
-        self.preload_bytes as _
+    fn get_preload_length(self: &Self) -> usize {
+        self.preload_length as _
     }
 }
 

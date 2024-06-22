@@ -114,7 +114,7 @@ pub struct VPKDirectoryEntryRespawn {
     /// A 32bit CRC of the file's data. Uses the CRC32 ISO HDLC algorithm.
     pub crc: u32,
     /// The number of preload bytes contained in the directory file.
-    pub preload_bytes: u16,
+    pub preload_length: u16,
     /// The list of file parts defined in the entry.
     pub file_parts: Vec<VPKFilePartEntryRespawn>,
 }
@@ -123,7 +123,7 @@ impl VPKDirectoryEntryRespawn {
     pub fn new() -> Self {
         Self {
             crc: 0,
-            preload_bytes: 0,
+            preload_length: 0,
             file_parts: Vec::new(),
         }
     }
@@ -132,7 +132,7 @@ impl VPKDirectoryEntryRespawn {
 impl DirEntry for VPKDirectoryEntryRespawn {
     fn from(file: &mut File) -> Result<Self, String> {
         let crc = file.read_u32().or(Err("Failed to read CRC"))?;
-        let preload_bytes = file.read_u16().or(Err("Failed to read preload bytes"))?;
+        let preload_length = file.read_u16().or(Err("Failed to read preload length"))?;
 
         let mut file_parts: Vec<VPKFilePartEntryRespawn> = Vec::new();
 
@@ -160,13 +160,13 @@ impl DirEntry for VPKDirectoryEntryRespawn {
 
         Ok(Self {
             crc,
-            preload_bytes,
+            preload_length,
             file_parts,
         })
     }
 
-    fn get_preload_bytes(self: &Self) -> usize {
-        self.preload_bytes as _
+    fn get_preload_length(self: &Self) -> usize {
+        self.preload_length as _
     }
 }
 
@@ -360,7 +360,7 @@ impl PakReader for VPKRespawn {
         let entry: &VPKDirectoryEntryRespawn = self.tree.files.get(file_path)?;
         let mut buf: Vec<u8> = Vec::new();
 
-        if entry.preload_bytes > 0 {
+        if entry.preload_length > 0 {
             buf.append(self.tree.preload.get(file_path)?.clone().as_mut());
         }
 
@@ -486,7 +486,7 @@ impl PakReader for VPKRespawn {
 
         let mut out_file = File::create(out_path).or(Err("Failed to create output file"))?;
 
-        if entry.preload_bytes > 0 {
+        if entry.preload_length > 0 {
             let preload_data = self
                 .tree
                 .preload
@@ -624,7 +624,7 @@ impl PakReader for VPKRespawn {
 
         let mut out_file = File::create(out_path).or(Err("Failed to create output file"))?;
 
-        if entry.preload_bytes > 0 {
+        if entry.preload_length > 0 {
             let preload_data = self
                 .tree
                 .preload

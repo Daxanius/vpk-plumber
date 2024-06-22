@@ -27,7 +27,7 @@ fn read_single_file_vpk_revpk() {
 
     let mut dir_entry = VPKDirectoryEntryRespawn {
         crc: 0x4570FA16,
-        preload_bytes: 0,
+        preload_length: 0,
         file_parts: Vec::new(),
     };
     dir_entry.file_parts.push(VPKFilePartEntryRespawn {

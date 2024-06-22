@@ -111,7 +111,7 @@ impl PakReader for VPKVersion1 {
         let entry = self.tree.files.get(file_path)?;
         let mut buf: Vec<u8> = Vec::new();
 
-        if entry.preload_bytes > 0 {
+        if entry.preload_length > 0 {
             buf.append(self.tree.preload.get(file_path)?.clone().as_mut());
         }
 
@@ -185,7 +185,7 @@ impl PakReader for VPKVersion1 {
             .set_len(entry.entry_length as _)
             .or(Err("Failed to set length of output file"))?;
 
-        if entry.preload_bytes > 0 {
+        if entry.preload_length > 0 {
             let chunk = self
                 .tree
                 .preload
@@ -282,7 +282,7 @@ impl PakReader for VPKVersion1 {
             .set_len(entry.entry_length as _)
             .or(Err("Failed to set length of output file"))?;
 
-        if entry.preload_bytes > 0 {
+        if entry.preload_length > 0 {
             let chunk = self
                 .tree
                 .preload

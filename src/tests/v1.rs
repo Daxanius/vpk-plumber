@@ -54,7 +54,7 @@ fn read_single_file_vpk_v1() {
         vpk.tree.files.get("test/file.txt"),
         Some(&VPKDirectoryEntry {
             crc: 0x4570FA16,
-            preload_bytes: 0,
+            preload_length: 0,
             archive_index: 0,
             entry_length: 9,
             entry_offset: 0,
@@ -109,7 +109,7 @@ fn read_single_file_eof_data_vpk_v1() {
         vpk.tree.files.get("test/file.txt"),
         Some(&VPKDirectoryEntry {
             crc: 0x4570FA16,
-            preload_bytes: 0,
+            preload_length: 0,
             archive_index: 0xFF7F,
             entry_length: 9,
             entry_offset: 0,
