@@ -1,7 +1,7 @@
 use crate::{
     common::{
         file::VPKFileReader,
-        format::{PakReader, VPKDirectoryEntry},
+        format::{PakReader, PakWriter, VPKDirectoryEntry},
     },
     pak::v1::format::VPKVersion1,
 };
@@ -197,5 +197,45 @@ fn read_big_vpk_v1() {
     assert!(
         file.stream_position().unwrap() >= file.seek(std::io::SeekFrom::End(0)).unwrap() - 1,
         "Should be at end of file"
+    );
+}
+
+#[test]
+fn write_parity_vpk_v1() {
+    let path = Path::new("./test_files/portal/pak01_dir.vpk");
+    let mut file: File = File::open(path).expect("Failed to open file");
+    let vpk = VPKVersion1::try_from(&mut file).expect("Failed to read VPK file");
+    assert_eq!(
+        vpk.tree.files.len(),
+        449,
+        "VPK tree should have 449 entries"
+    );
+    assert!(
+        file.stream_position().unwrap() >= file.seek(std::io::SeekFrom::End(0)).unwrap() - 1,
+        "Should be at end of file"
+    );
+
+    let out_path = String::from("./test_files/out/pak01_dir.vpk");
+
+    vpk.write_dir(&out_path).unwrap();
+
+    let mut file: File = File::open(&out_path).expect("Failed to open file");
+    let new_vpk = VPKVersion1::try_from(&mut file).expect("Failed to read VPK file");
+    assert_eq!(
+        new_vpk.tree.files.len(),
+        449,
+        "VPK tree should have 449 entries"
+    );
+    assert!(
+        file.stream_position().unwrap() >= file.seek(std::io::SeekFrom::End(0)).unwrap() - 1,
+        "Should be at end of file"
+    );
+
+    let _ = remove_file(out_path);
+    let _ = remove_dir("./test_files/out");
+
+    assert!(
+        new_vpk == vpk,
+        "Written VPK did not contain the same data as the original"
     );
 }

@@ -5,27 +5,24 @@ sourcepak is a Rust crate that provides support for working with VPK (Valve Pak)
 - [x] Read and write VPK files
 - [x] Extract files from VPK archives
 - [x] Optionally memory-map archive files for faster speeds (with the `mem-map` feature)
-- [ ] Pack files into VPK archives
+- [x] Write VPK directory files (`dir.vpk`)
 
 ## Supported formats
 ### VPK v1 (Alien Swarm, Dota 2, L4D, L4D2, Portal 2, SFM)
 - [x] Read directory files
 - [x] Read file contents
-- [ ] Patch existing VPKs
-- [ ] Write new VPKs
+- [x] Write VPK directories
 
 ### VPK v2 (CS:GO, CS:S, DoD:S, HL:S, HL2, HL2:DM, Portal, TF2, Source 2)
 - [x] Read directory files
 - [ ] Read file contents
-- [ ] Patch existing VPKs
-- [ ] Write new VPKs
+- [ ] Write VPK directories
 
 ### Respawn VPK (Titanfall)
 - [x] Read directory files
 - [x] Read file contents
-- [x] Read audio files
-- [ ] Patch existing VPKs
-- [ ] Write new VPKs
+- [x] Read audio files (see [here](https://github.com/barnabwhy/TF1.Audio.English?tab=readme-ov-file#why-did-respawn-decompress-the-audio-in-the-first-place) for why this is separate)
+- [x] Write VPK directories
 
 ## Documentation
 Documentation can be found [here](https://docs.rs/sourcepak)

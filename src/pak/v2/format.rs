@@ -4,7 +4,7 @@ use std::{fs::File, io::Seek};
 
 use crate::common::{
     file::VPKFileReader,
-    format::{PakReader, VPKDirectoryEntry, VPKTree},
+    format::{PakReader, PakWriter, VPKDirectoryEntry, VPKTree},
 };
 
 #[cfg(feature = "mem-map")]
@@ -282,6 +282,12 @@ impl PakReader for VPKVersion2 {
         _file_path: &String,
         _output_path: &String,
     ) -> Result<(), String> {
+        todo!()
+    }
+}
+
+impl PakWriter for VPKVersion2 {
+    fn write_dir(self: &Self, _out_path: &String) -> Result<(), String> {
         todo!()
     }
 }

@@ -1,3 +1,4 @@
+use crate::common::format::PakWriter;
 use crate::common::{file::VPKFileReader, format::PakReader};
 use crate::pak::revpk::format::{VPKDirectoryEntryRespawn, VPKFilePartEntryRespawn, VPKRespawn};
 
@@ -226,5 +227,45 @@ fn revpk_read_cam_for_vpk() {
         ]
         .to_vec(),
         "WAV header should match",
+    );
+}
+
+#[test]
+fn write_parity_vpk_revpk() {
+    let path = Path::new("./test_files/titanfall/englishclient_mp_colony.bsp.pak000_dir.vpk");
+    let mut file: File = File::open(path).expect("Failed to open file");
+    let vpk = VPKRespawn::try_from(&mut file).expect("Failed to read VPK file");
+    assert_eq!(
+        vpk.tree.files.len(),
+        5723,
+        "VPK tree should have 5723 entries"
+    );
+    assert!(
+        file.stream_position().unwrap() >= file.seek(std::io::SeekFrom::End(0)).unwrap() - 1,
+        "Should be at end of file"
+    );
+
+    let out_path = String::from("./test_files/out/englishclient_mp_colony.bsp.pak000_dir.vpk");
+
+    vpk.write_dir(&out_path).unwrap();
+
+    let mut file: File = File::open(&out_path).expect("Failed to open file");
+    let new_vpk = VPKRespawn::try_from(&mut file).expect("Failed to read VPK file");
+    assert_eq!(
+        new_vpk.tree.files.len(),
+        5723,
+        "VPK tree should have 5723 entries"
+    );
+    assert!(
+        file.stream_position().unwrap() >= file.seek(std::io::SeekFrom::End(0)).unwrap() - 1,
+        "Should be at end of file"
+    );
+
+    let _ = remove_file(out_path);
+    let _ = remove_dir("./test_files/out");
+
+    assert!(
+        new_vpk == vpk,
+        "Written VPK did not contain the same data as the original"
     );
 }

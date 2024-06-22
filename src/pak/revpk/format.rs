@@ -1,7 +1,7 @@
 //! Support for the Respawn VPK format.
 
-use crate::common::file::VPKFileReader;
-use crate::common::format::{DirEntry, PakReader, VPKTree};
+use crate::common::file::{VPKFileReader, VPKFileWriter};
+use crate::common::format::{DirEntry, PakReader, PakWriter, VPKTree, VPK_ENTRY_TERMINATOR};
 use crate::common::lzham::decompress;
 use crc::{Crc, CRC_32_ISO_HDLC};
 #[cfg(feature = "mem-map")]
@@ -23,6 +23,7 @@ pub const VPK_VERSION_REVPK: u32 = 196610;
 pub const RESPAWN_CAM_ENTRY_MAGIC: u32 = 3302889984;
 
 /// The header of a Respawn VPK file.
+#[derive(PartialEq, Eq)]
 pub struct VPKHeaderRespawn {
     /// VPK signature. Should be equal to [`VPK_SIGNATURE_REVPK`].
     pub signature: u32,
@@ -75,6 +76,33 @@ impl VPKHeaderRespawn {
             tree_size,
             unknown,
         })
+    }
+
+    /// Write the header to a file.
+    pub fn write(self: &Self, file: &mut File) -> Result<(), String> {
+        if self.signature != VPK_SIGNATURE_REVPK {
+            return Err(format!(
+                "VPK header signature should be {:#x}",
+                VPK_SIGNATURE_REVPK
+            ));
+        }
+        if self.version != VPK_VERSION_REVPK {
+            return Err(format!(
+                "VPK header version should be {}",
+                VPK_VERSION_REVPK
+            ));
+        }
+
+        file.write_u32(self.signature)
+            .or(Err("Could not write signature field to file"))?;
+        file.write_u32(self.version)
+            .or(Err("Could not write version field to file"))?;
+        file.write_u32(self.tree_size)
+            .or(Err("Could not write header version to file"))?;
+        file.write_u32(self.unknown)
+            .or(Err("Could not write unknown field to file"))?;
+
+        Ok(())
     }
 
     /// Check if a file is in the Respawn VPK format.
@@ -163,6 +191,32 @@ impl DirEntry for VPKDirectoryEntryRespawn {
             preload_length,
             file_parts,
         })
+    }
+
+    fn write(self: &Self, file: &mut File) -> Result<(), String> {
+        file.write_u32(self.crc).or(Err("Failed to write CRC"))?;
+        file.write_u16(self.preload_length)
+            .or(Err("Failed to write preload length"))?;
+
+        for file_part in &self.file_parts {
+            file.write_u16(file_part.archive_index)
+                .or(Err("Failed writing archive index"))?;
+            file.write_u16(file_part.load_flags)
+                .or(Err("Failed writing load flags"))?;
+            file.write_u32(file_part.texture_flags)
+                .or(Err("Failed writing texture flags"))?;
+            file.write_u64(file_part.entry_offset)
+                .or(Err("Failed writing entry offset"))?;
+            file.write_u64(file_part.entry_length)
+                .or(Err("Failed writing entry length"))?;
+            file.write_u64(file_part.entry_length_uncompressed)
+                .or(Err("Failed writing uncompressed entry length"))?;
+        }
+
+        file.write_u16(VPK_ENTRY_TERMINATOR) // Entry terminator
+            .or(Err("Failed writing entry terminator"))?;
+
+        Ok(())
     }
 
     fn get_preload_length(self: &Self) -> usize {
@@ -313,6 +367,7 @@ impl VPKRespawnCamEntry {
 }
 
 /// The Respawn VPK format.
+#[derive(PartialEq, Eq)]
 pub struct VPKRespawn {
     /// The VPK's header.
     pub header: VPKHeaderRespawn,
@@ -766,6 +821,22 @@ impl PakReader for VPKRespawn {
         } else {
             Ok(())
         }
+    }
+}
+
+impl PakWriter for VPKRespawn {
+    fn write_dir(self: &Self, output_path: &String) -> Result<(), String> {
+        let out_path = std::path::Path::new(output_path);
+        if let Some(prefix) = out_path.parent() {
+            std::fs::create_dir_all(prefix).or(Err("Failed to create parent directories"))?;
+        };
+
+        let mut out_file = File::create(out_path).or(Err("Failed to create output file."))?;
+
+        self.header.write(&mut out_file)?;
+        self.tree.write(&mut out_file)?;
+
+        Ok(())
     }
 }
 

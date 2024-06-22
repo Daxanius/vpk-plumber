@@ -1,7 +1,7 @@
 //! Support for the VPK version 1 format.
 
-use crate::common::file::VPKFileReader;
-use crate::common::format::{PakReader, VPKDirectoryEntry, VPKTree};
+use crate::common::file::{VPKFileReader, VPKFileWriter};
+use crate::common::format::{PakReader, PakWriter, VPKDirectoryEntry, VPKTree};
 use crc::{Crc, CRC_32_ISO_HDLC};
 use std::cmp::min;
 use std::fs::File;
@@ -20,6 +20,7 @@ pub const VPK_SIGNATURE_V1: u32 = 0x55AA1234;
 pub const VPK_VERSION_V1: u32 = 1;
 
 /// The header of a VPK version 1 file.
+#[derive(PartialEq, Eq)]
 pub struct VPKHeaderV1 {
     /// VPK signature. Should be equal to [`VPK_SIGNATURE_V1`].
     pub signature: u32,
@@ -60,6 +61,28 @@ impl VPKHeaderV1 {
         })
     }
 
+    /// Write the header to a file.
+    pub fn write(self: &Self, file: &mut File) -> Result<(), String> {
+        if self.signature != VPK_SIGNATURE_V1 {
+            return Err(format!(
+                "VPK header signature should be {:#x}",
+                VPK_SIGNATURE_V1
+            ));
+        }
+        if self.version != VPK_VERSION_V1 {
+            return Err(format!("VPK header version should be {}", VPK_VERSION_V1));
+        }
+
+        file.write_u32(self.signature)
+            .or(Err("Could not write signature field to file"))?;
+        file.write_u32(self.version)
+            .or(Err("Could not write version field to file"))?;
+        file.write_u32(self.tree_size)
+            .or(Err("Could not write header version to file"))?;
+
+        Ok(())
+    }
+
     /// Check if a file is in the VPK version 1 format.
     pub fn is_format(file: &mut File) -> bool {
         let pos = file.stream_position().unwrap();
@@ -74,6 +97,7 @@ impl VPKHeaderV1 {
 }
 
 /// The VPK version 1 format.
+#[derive(PartialEq, Eq)]
 pub struct VPKVersion1 {
     /// The VPK's header.
     pub header: VPKHeaderV1,
@@ -330,6 +354,22 @@ impl PakReader for VPKVersion1 {
         } else {
             Ok(())
         }
+    }
+}
+
+impl PakWriter for VPKVersion1 {
+    fn write_dir(self: &Self, output_path: &String) -> Result<(), String> {
+        let out_path = std::path::Path::new(output_path);
+        if let Some(prefix) = out_path.parent() {
+            std::fs::create_dir_all(prefix).or(Err("Failed to create parent directories"))?;
+        };
+
+        let mut out_file = File::create(out_path).or(Err("Failed to create output file."))?;
+
+        self.header.write(&mut out_file)?;
+        self.tree.write(&mut out_file)?;
+
+        Ok(())
     }
 }
 
