@@ -1,6 +1,8 @@
 # sourcepak
 sourcepak is a Rust crate that provides support for working with VPK (Valve Pak) files. It allows you to read and write VPK files, as well as extract and pack their contents.
 
+[![crates.io](https://img.shields.io/crates/v/sourcepak.svg)](https://crates.io/crates/sourcepak)
+
 ## Features
 - [x] Read and write VPK files
 - [x] Extract files from VPK archives
