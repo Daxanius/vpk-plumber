@@ -1,16 +1,16 @@
 [package]
-name = "sourcepak"
-description = "A library for reading and writing Source engine package files."
-repository = "https://github.com/barnabwhy/sourcepak-rs/"
+name = "vpk-plumber"
+description = "A fork of sourcepak"
+repository = "hhttps://github.com/Daxanius/vpk-plumber"
 license = "MIT"
 version = "0.3.0"
-edition = "2021"
+edition = "2024"
 exclude = [".vscode", ".github", "test_files"]
 
 [features]
+rpak = []
 respawn = ["revpk", "rpak"]
 revpk = ["dep:lzham-alpha-sys"]
-rpak = []
 mem-map = ["dep:filebuffer"]
 
 [dependencies]
