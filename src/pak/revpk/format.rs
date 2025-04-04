@@ -575,7 +575,7 @@ impl PakReader for VPKRespawn {
         let out_path = std::path::Path::new(output_path);
         if let Some(prefix) = out_path.parent() {
             std::fs::create_dir_all(prefix).or(Err("Failed to create parent directories"))?;
-        };
+        }
 
         let mut out_file = File::create(out_path).or(Err("Failed to create output file"))?;
 
@@ -726,7 +726,7 @@ impl PakReader for VPKRespawn {
         let out_path = std::path::Path::new(output_path);
         if let Some(prefix) = out_path.parent() {
             std::fs::create_dir_all(prefix).or(Err("Failed to create parent directories"))?;
-        };
+        }
 
         let mut out_file = File::create(out_path).or(Err("Failed to create output file"))?;
 
