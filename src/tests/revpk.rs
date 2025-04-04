@@ -1,5 +1,5 @@
-use crate::common::format::PakWriter;
-use crate::common::{file::VPKFileReader, format::PakReader};
+use crate::common::file::VPKFileReader;
+use crate::common::format::{PakReader, PakWorker, PakWriter};
 use crate::pak::revpk::format::{VPKDirectoryEntryRespawn, VPKFilePartEntryRespawn, VPKRespawn};
 
 use std::{

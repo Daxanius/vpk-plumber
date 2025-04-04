@@ -1,7 +1,9 @@
 //! Support for the Respawn VPK format.
 
 use crate::common::file::{VPKFileReader, VPKFileWriter};
-use crate::common::format::{DirEntry, PakReader, PakWriter, VPK_ENTRY_TERMINATOR, VPKTree};
+use crate::common::format::{
+    DirEntry, PakReader, PakWorker, PakWriter, VPK_ENTRY_TERMINATOR, VPKTree,
+};
 use crate::common::lzham::decompress;
 use crc::{CRC_32_ISO_HDLC, Crc};
 #[cfg(feature = "mem-map")]
@@ -399,34 +401,6 @@ pub struct VPKRespawn {
 }
 
 impl PakReader for VPKRespawn {
-    fn new() -> Self {
-        Self {
-            header: VPKHeaderRespawn {
-                signature: VPK_SIGNATURE_REVPK,
-                version: VPK_VERSION_REVPK,
-                tree_size: 0,
-                unknown: 0,
-            },
-            tree: VPKTree::new(),
-            archive_cams: HashMap::new(),
-        }
-    }
-
-    fn from_file(file: &mut File) -> Result<Self, String> {
-        let header = VPKHeaderRespawn::from(file)?;
-
-        let tree_start = file.stream_position().unwrap();
-        let tree = VPKTree::from(file, tree_start, header.tree_size.into())?;
-
-        let archive_cams = HashMap::new();
-
-        Ok(Self {
-            header,
-            tree,
-            archive_cams,
-        })
-    }
-
     fn read_file(
         &self,
         archive_path: &String,
@@ -901,6 +875,36 @@ impl PakWriter for VPKRespawn {
         self.tree.write(&mut out_file)?;
 
         Ok(())
+    }
+}
+
+impl PakWorker for VPKRespawn {
+    fn new() -> Self {
+        Self {
+            header: VPKHeaderRespawn {
+                signature: VPK_SIGNATURE_REVPK,
+                version: VPK_VERSION_REVPK,
+                tree_size: 0,
+                unknown: 0,
+            },
+            tree: VPKTree::new(),
+            archive_cams: HashMap::new(),
+        }
+    }
+
+    fn from_file(file: &mut File) -> Result<Self, String> {
+        let header = VPKHeaderRespawn::from(file)?;
+
+        let tree_start = file.stream_position().unwrap();
+        let tree = VPKTree::from(file, tree_start, header.tree_size.into())?;
+
+        let archive_cams = HashMap::new();
+
+        Ok(Self {
+            header,
+            tree,
+            archive_cams,
+        })
     }
 }
 

@@ -1,10 +1,13 @@
-//! Utilities to detect which format a VPK file is in.
+use super::format::PakWorker;
+use crate::pak::{
+    v1::format::{VPKHeaderV1, VPKVersion1},
+    v2::format::{VPKHeaderV2, VPKVersion2},
+};
 
 use std::{fmt, fs::File};
 
 #[cfg(feature = "revpk")]
-use crate::pak::revpk::format::VPKHeaderRespawn;
-use crate::pak::{v1::format::VPKHeaderV1, v2::format::VPKHeaderV2};
+use crate::pak::revpk::format::{VPKHeaderRespawn, VPKRespawn};
 
 /// Lists the different formats of VPK files.
 #[derive(PartialEq)]
@@ -42,13 +45,41 @@ pub fn detect_pak_format(file: &mut File) -> PakFormat {
     if VPKHeaderV1::is_format(file) {
         return PakFormat::VPKVersion1;
     }
+
     if VPKHeaderV2::is_format(file) {
         return PakFormat::VPKVersion2;
     }
+
     #[cfg(feature = "revpk")]
     if VPKHeaderRespawn::is_format(file) {
         return PakFormat::VPKRespawn;
     }
 
     PakFormat::Unknown
+}
+
+/// Detects the correct VPK format to use and returns
+/// the appropriate PakWorker to work with the format.
+/// # Errors
+/// - When the format is unknown
+/// - When the file data is invalid
+pub fn get_pak_worker(file: &mut File) -> Result<Box<dyn PakWorker>, String> {
+    match detect_pak_format(file) {
+        PakFormat::VPKVersion1 => {
+            let packager = VPKVersion1::from_file(file)?; // Unwrap Result<VPKVersion1, String>
+            Ok(Box::new(packager)) // Convert to Box<dyn PakWorker>
+        }
+        PakFormat::VPKVersion2 => {
+            let packager = VPKVersion2::from_file(file)?; // Unwrap Result<VPKVersion1, String>
+            Ok(Box::new(packager)) // Convert to Box<dyn PakWorker>
+        }
+
+        #[cfg(feature = "revpk")]
+        PakFormat::VPKRespawn => {
+            let packager = VPKRespawn::from_file(file)?; // Unwrap Result<VPKVersion1, String>
+            Ok(Box::new(packager)) // Convert to Box<dyn PakWorker>
+        }
+
+        _ => Err("Unknown format".to_string()), // Handle other cases
+    }
 }

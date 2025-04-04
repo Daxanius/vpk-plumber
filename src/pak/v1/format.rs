@@ -1,7 +1,7 @@
 //! Support for the VPK version 1 format.
 
 use crate::common::file::{VPKFileReader, VPKFileWriter};
-use crate::common::format::{PakReader, PakWriter, VPKDirectoryEntry, VPKTree};
+use crate::common::format::{PakReader, PakWorker, PakWriter, VPKDirectoryEntry, VPKTree};
 use crc::{CRC_32_ISO_HDLC, Crc};
 use std::cmp::min;
 use std::fs::File;
@@ -109,26 +109,6 @@ pub struct VPKVersion1 {
 }
 
 impl PakReader for VPKVersion1 {
-    fn new() -> Self {
-        Self {
-            header: VPKHeaderV1 {
-                signature: VPK_SIGNATURE_V1,
-                version: VPK_VERSION_V1,
-                tree_size: 0,
-            },
-            tree: VPKTree::new(),
-        }
-    }
-
-    fn from_file(file: &mut File) -> Result<Self, String> {
-        let header = VPKHeaderV1::from(file)?;
-
-        let tree_start = file.stream_position().unwrap();
-        let tree = VPKTree::from(file, tree_start, header.tree_size.into())?;
-
-        Ok(Self { header, tree })
-    }
-
     fn read_file(
         &self,
         archive_path: &String,
@@ -373,6 +353,28 @@ impl PakWriter for VPKVersion1 {
         self.tree.write(&mut out_file)?;
 
         Ok(())
+    }
+}
+
+impl PakWorker for VPKVersion1 {
+    fn new() -> Self {
+        Self {
+            header: VPKHeaderV1 {
+                signature: VPK_SIGNATURE_V1,
+                version: VPK_VERSION_V1,
+                tree_size: 0,
+            },
+            tree: VPKTree::new(),
+        }
+    }
+
+    fn from_file(file: &mut File) -> Result<Self, String> {
+        let header = VPKHeaderV1::from(file)?;
+
+        let tree_start = file.stream_position().unwrap();
+        let tree = VPKTree::from(file, tree_start, header.tree_size.into())?;
+
+        Ok(Self { header, tree })
     }
 }
 

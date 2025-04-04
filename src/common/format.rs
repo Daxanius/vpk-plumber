@@ -43,7 +43,7 @@ where
 impl<DirectoryEntry> Default for VPKTree<DirectoryEntry>
 where
     DirectoryEntry: DirEntry,
- {
+{
     fn default() -> Self {
         Self::new()
     }
@@ -53,7 +53,8 @@ impl<DirectoryEntry> VPKTree<DirectoryEntry>
 where
     DirectoryEntry: DirEntry,
 {
-    #[must_use] pub fn new() -> Self {
+    #[must_use]
+    pub fn new() -> Self {
         Self {
             files: HashMap::new(),
             preload: HashMap::new(),
@@ -212,7 +213,8 @@ impl Default for VPKDirectoryEntry {
 }
 
 impl VPKDirectoryEntry {
-    #[must_use] pub fn new() -> Self {
+    #[must_use]
+    pub fn new() -> Self {
         Self {
             crc: 0,
             preload_length: 0,
@@ -276,13 +278,6 @@ impl DirEntry for VPKDirectoryEntry {
 
 /// Trait for reading VPK files.
 pub trait PakReader {
-    /// Create an empty readable VPK which can then be constructed programmatically.
-    fn new() -> Self;
-    /// Create a readable VPK from a directory file.
-    fn from_file(file: &mut File) -> Result<Self, String>
-    where
-        Self: Sized;
-
     /// Read the contents of a file stored in the VPK into memory.
     fn read_file(
         &self,
@@ -318,4 +313,16 @@ pub trait PakWriter {
     /// Write the dir.vpk file for this VPK to disk with a given path.
     /// Does not modify or create archives if the any [`VPKDirectoryEntry`] has changed.
     fn write_dir(&self, output_path: &String) -> Result<(), String>;
+}
+
+pub trait PakWorker: PakReader + PakWriter {
+    /// Create an empty readable VPK which can then be constructed programmatically.
+    fn new() -> Self
+    where
+        Self: Sized;
+
+    /// Create a readable VPK from a directory file.
+    fn from_file(file: &mut File) -> Result<Self, String>
+    where
+        Self: Sized;
 }

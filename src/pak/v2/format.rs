@@ -4,7 +4,7 @@ use std::{fs::File, io::Seek};
 
 use crate::common::{
     file::VPKFileReader,
-    format::{PakReader, PakWriter, VPKDirectoryEntry, VPKTree},
+    format::{PakReader, PakWorker, PakWriter, VPKDirectoryEntry, VPKTree},
 };
 
 #[cfg(feature = "mem-map")]
@@ -182,6 +182,45 @@ pub struct VPKVersion2 {
 }
 
 impl PakReader for VPKVersion2 {
+    fn read_file(
+        &self,
+        _archive_path: &String,
+        _vpk_name: &String,
+        _file_path: &String,
+    ) -> Option<Vec<u8>> {
+        todo!()
+    }
+
+    fn extract_file(
+        &self,
+        _archive_path: &String,
+        _vpk_name: &String,
+        _file_path: &String,
+        _output_path: &String,
+    ) -> Result<(), String> {
+        todo!()
+    }
+
+    #[cfg(feature = "mem-map")]
+    fn extract_file_mem_map(
+        &self,
+        _archive_path: &String,
+        _archive_mmaps: &HashMap<u16, FileBuffer>,
+        _vpk_name: &String,
+        _file_path: &String,
+        _output_path: &String,
+    ) -> Result<(), String> {
+        todo!()
+    }
+}
+
+impl PakWriter for VPKVersion2 {
+    fn write_dir(&self, _out_path: &String) -> Result<(), String> {
+        todo!()
+    }
+}
+
+impl PakWorker for VPKVersion2 {
     fn new() -> Self {
         Self {
             header: VPKHeaderV2 {
@@ -289,43 +328,6 @@ impl PakReader for VPKVersion2 {
             other_md5_section,
             signature_section,
         })
-    }
-
-    fn read_file(
-        &self,
-        _archive_path: &String,
-        _vpk_name: &String,
-        _file_path: &String,
-    ) -> Option<Vec<u8>> {
-        todo!()
-    }
-
-    fn extract_file(
-        &self,
-        _archive_path: &String,
-        _vpk_name: &String,
-        _file_path: &String,
-        _output_path: &String,
-    ) -> Result<(), String> {
-        todo!()
-    }
-
-    #[cfg(feature = "mem-map")]
-    fn extract_file_mem_map(
-        &self,
-        _archive_path: &String,
-        _archive_mmaps: &HashMap<u16, FileBuffer>,
-        _vpk_name: &String,
-        _file_path: &String,
-        _output_path: &String,
-    ) -> Result<(), String> {
-        todo!()
-    }
-}
-
-impl PakWriter for VPKVersion2 {
-    fn write_dir(&self, _out_path: &String) -> Result<(), String> {
-        todo!()
     }
 }
 
