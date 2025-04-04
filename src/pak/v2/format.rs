@@ -67,12 +67,11 @@ impl VPKHeaderV2 {
 
         if signature != VPK_SIGNATURE_V2 {
             return Err(format!(
-                "VPK header signature should be {:#x}",
-                VPK_SIGNATURE_V2
+                "VPK header signature should be {VPK_SIGNATURE_V2:#x}"
             ));
         }
         if version != VPK_VERSION_V2 {
-            return Err(format!("VPK header version should be {}", VPK_VERSION_V2));
+            return Err(format!("VPK header version should be {VPK_VERSION_V2}"));
         }
         if archive_md5_section_size % 28 != 0 {
             return Err(
@@ -122,8 +121,14 @@ pub struct VPKOtherMD5Section {
     pub archive_md5_section_checksum: Vec<u8>, // len: 16
     pub unknown: Vec<u8>,                      // len: 16
 }
+impl Default for VPKOtherMD5Section {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VPKOtherMD5Section {
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self {
             tree_checksum: vec![0; 16],
             archive_md5_section_checksum: vec![0; 16],
@@ -239,7 +244,7 @@ impl PakReader for VPKVersion2 {
             })
         } else {
             let _ = file.seek(std::io::SeekFrom::Current(
-                header.signature_section_size as _,
+                header.signature_section_size.into(),
             ));
             None
         };
@@ -255,7 +260,7 @@ impl PakReader for VPKVersion2 {
     }
 
     fn read_file(
-        self: &Self,
+        &self,
         _archive_path: &String,
         _vpk_name: &String,
         _file_path: &String,
@@ -264,7 +269,7 @@ impl PakReader for VPKVersion2 {
     }
 
     fn extract_file(
-        self: &Self,
+        &self,
         _archive_path: &String,
         _vpk_name: &String,
         _file_path: &String,
@@ -275,7 +280,7 @@ impl PakReader for VPKVersion2 {
 
     #[cfg(feature = "mem-map")]
     fn extract_file_mem_map(
-        self: &Self,
+        &self,
         _archive_path: &String,
         _archive_mmaps: &HashMap<u16, FileBuffer>,
         _vpk_name: &String,
@@ -287,7 +292,7 @@ impl PakReader for VPKVersion2 {
 }
 
 impl PakWriter for VPKVersion2 {
-    fn write_dir(self: &Self, _out_path: &String) -> Result<(), String> {
+    fn write_dir(&self, _out_path: &String) -> Result<(), String> {
         todo!()
     }
 }

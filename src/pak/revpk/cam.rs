@@ -9,14 +9,14 @@ use super::format::VPKRespawnCamEntry;
 
 const SAMPLE_DEPTH: u16 = 16;
 
-pub fn create_wav_header(cam_entry: &VPKRespawnCamEntry) -> Vec<u8> {
+#[must_use] pub fn create_wav_header(cam_entry: &VPKRespawnCamEntry) -> Vec<u8> {
     let mut header = [0u8; 44];
 
     // "RIFF" magic
     header[0..4].copy_from_slice(&0x52494646_u32.to_be_bytes());
 
     // File size
-    let file_len: u32 = 2 * cam_entry.sample_count * cam_entry.channels as u32;
+    let file_len: u32 = 2 * cam_entry.sample_count * u32::from(cam_entry.channels);
     header[4..8].copy_from_slice(&(file_len - 8 + 44).to_le_bytes());
 
     // "RIFF" magic
@@ -32,17 +32,17 @@ pub fn create_wav_header(cam_entry: &VPKRespawnCamEntry) -> Vec<u8> {
     header[20..22].copy_from_slice(&1_u16.to_le_bytes());
 
     // Channels
-    header[22..24].copy_from_slice(&(cam_entry.channels as u16).to_le_bytes());
+    header[22..24].copy_from_slice(&u16::from(cam_entry.channels).to_le_bytes());
 
     // Sample rate
     header[24..28].copy_from_slice(&cam_entry.sample_rate.to_le_bytes());
 
     // Sample rate * sample depth * channels / 8
-    let bytes_per_sec = cam_entry.sample_rate * SAMPLE_DEPTH as u32 * cam_entry.channels as u32 / 8;
+    let bytes_per_sec = cam_entry.sample_rate * u32::from(SAMPLE_DEPTH) * u32::from(cam_entry.channels) / 8;
     header[28..32].copy_from_slice(&bytes_per_sec.to_le_bytes());
 
     // Sample depth * channels / 8
-    header[32..34].copy_from_slice(&(SAMPLE_DEPTH * cam_entry.channels as u16 / 8).to_le_bytes());
+    header[32..34].copy_from_slice(&(SAMPLE_DEPTH * u16::from(cam_entry.channels) / 8).to_le_bytes());
 
     // Sample depth
     header[34..36].copy_from_slice(&SAMPLE_DEPTH.to_le_bytes());

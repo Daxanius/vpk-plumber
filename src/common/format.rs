@@ -22,10 +22,10 @@ pub trait DirEntry {
         Self: Sized;
 
     /// Write the directory entry to a file.
-    fn write(self: &Self, file: &mut File) -> Result<(), String>;
+    fn write(&self, file: &mut File) -> Result<(), String>;
 
     /// Returns the number of bytes of preload data for an entry, this is 0 if all the data is stored in archives.
-    fn get_preload_length(self: &Self) -> usize;
+    fn get_preload_length(&self) -> usize;
 }
 
 /// The file tree parsed from a VPK directory files.
@@ -40,11 +40,20 @@ where
     pub preload: HashMap<String, Vec<u8>>,
 }
 
+impl<DirectoryEntry> Default for VPKTree<DirectoryEntry>
+where
+    DirectoryEntry: DirEntry,
+ {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<DirectoryEntry> VPKTree<DirectoryEntry>
 where
     DirectoryEntry: DirEntry,
 {
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self {
             files: HashMap::new(),
             preload: HashMap::new(),
@@ -59,23 +68,23 @@ where
 
         while file.stream_position().unwrap() < start + size {
             let extension = file.read_string().or(Err("Failed to read extension"))?;
-            if extension.len() == 0 {
+            if extension.is_empty() {
                 break;
             }
 
             loop {
                 let path = file.read_string().or(Err("Failed to read path"))?;
-                if path.len() == 0 || file.stream_position().unwrap() > start + size {
+                if path.is_empty() || file.stream_position().unwrap() > start + size {
                     break;
                 }
 
                 loop {
                     let file_name = file.read_string().or(Err("Failed to read file name"))?;
-                    if file_name.len() == 0 || file.stream_position().unwrap() > start + size {
+                    if file_name.is_empty() || file.stream_position().unwrap() > start + size {
                         break;
                     }
 
-                    let file_path = format!("{}/{}.{}", path, file_name, extension);
+                    let file_path = format!("{path}/{file_name}.{extension}");
 
                     let entry = DirectoryEntry::from(file)?;
 
@@ -95,7 +104,7 @@ where
         Ok(tree)
     }
 
-    pub fn write(self: &Self, file: &mut File) -> Result<(), String> {
+    pub fn write(&self, file: &mut File) -> Result<(), String> {
         let mut treeified: HashMap<
             String,
             HashMap<String, Vec<(String, &DirectoryEntry, Option<&Vec<u8>>)>>,
@@ -196,8 +205,14 @@ pub struct VPKDirectoryEntry {
 }
 // Note: If a file contains preload data, the preload data immediately follows the above structure. The entire size of a file is PreloadBytes + EntryLength.
 
+impl Default for VPKDirectoryEntry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VPKDirectoryEntry {
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self {
             crc: 0,
             preload_length: 0,
@@ -232,7 +247,7 @@ impl DirEntry for VPKDirectoryEntry {
         })
     }
 
-    fn write(self: &Self, file: &mut File) -> Result<(), String> {
+    fn write(&self, file: &mut File) -> Result<(), String> {
         if self.terminator != VPK_ENTRY_TERMINATOR {
             return Err(String::from("VPK entry terminator should be 0xFFFF"));
         }
@@ -254,7 +269,7 @@ impl DirEntry for VPKDirectoryEntry {
         Ok(())
     }
 
-    fn get_preload_length(self: &Self) -> usize {
+    fn get_preload_length(&self) -> usize {
         self.preload_length as _
     }
 }
@@ -270,7 +285,7 @@ pub trait PakReader {
 
     /// Read the contents of a file stored in the VPK into memory.
     fn read_file(
-        self: &Self,
+        &self,
         archive_path: &String,
         vpk_name: &String,
         file_path: &String,
@@ -278,7 +293,7 @@ pub trait PakReader {
 
     /// Extract the contents of a file stored in the VPK to a file system location.
     fn extract_file(
-        self: &Self,
+        &self,
         archive_path: &String,
         vpk_name: &String,
         file_path: &String,
@@ -289,7 +304,7 @@ pub trait PakReader {
     /// Memory mapped files for every archive used in the extraction must be provided.
     #[cfg(feature = "mem-map")]
     fn extract_file_mem_map(
-        self: &Self,
+        &self,
         archive_path: &String,
         archive_mmaps: &HashMap<u16, FileBuffer>,
         vpk_name: &String,
@@ -302,5 +317,5 @@ pub trait PakReader {
 pub trait PakWriter {
     /// Write the dir.vpk file for this VPK to disk with a given path.
     /// Does not modify or create archives if the any [`VPKDirectoryEntry`] has changed.
-    fn write_dir(self: &Self, output_path: &String) -> Result<(), String>;
+    fn write_dir(&self, output_path: &String) -> Result<(), String>;
 }

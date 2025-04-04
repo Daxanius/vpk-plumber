@@ -42,7 +42,7 @@ pub fn compress(src: &mut Vec<u8>) -> Vec<u8> {
 
     let mut adler32: lzham_uint32 = 0;
 
-    let _ = unsafe {
+    let () = unsafe {
         lzham_compress_memory(
             &TFLZHAM_COMPRESS_PARAMS,
             dst.as_mut_ptr(),
@@ -58,13 +58,13 @@ pub fn compress(src: &mut Vec<u8>) -> Vec<u8> {
     dst
 }
 
-pub fn decompress(src: &Vec<u8>, dst_len: usize) -> Vec<u8> {
+#[must_use] pub fn decompress(src: &Vec<u8>, dst_len: usize) -> Vec<u8> {
     let mut dst = vec![0; dst_len];
     let mut dst_len_new = dst_len;
 
     let mut adler32: lzham_uint32 = 0;
 
-    let _ = unsafe {
+    let () = unsafe {
         lzham_decompress_memory(
             &TFLZHAM_DECOMPRESS_PARAMS,
             dst.as_mut_ptr(),

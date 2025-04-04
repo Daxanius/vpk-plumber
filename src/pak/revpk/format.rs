@@ -56,14 +56,12 @@ impl VPKHeaderRespawn {
 
         if signature != VPK_SIGNATURE_REVPK {
             return Err(format!(
-                "VPK header signature should be {:#x}",
-                VPK_SIGNATURE_REVPK
+                "VPK header signature should be {VPK_SIGNATURE_REVPK:#x}"
             ));
         }
         if version != VPK_VERSION_REVPK {
             return Err(format!(
-                "VPK header version should be {}",
-                VPK_VERSION_REVPK
+                "VPK header version should be {VPK_VERSION_REVPK}"
             ));
         }
         if unknown != 0 {
@@ -79,17 +77,15 @@ impl VPKHeaderRespawn {
     }
 
     /// Write the header to a file.
-    pub fn write(self: &Self, file: &mut File) -> Result<(), String> {
+    pub fn write(&self, file: &mut File) -> Result<(), String> {
         if self.signature != VPK_SIGNATURE_REVPK {
             return Err(format!(
-                "VPK header signature should be {:#x}",
-                VPK_SIGNATURE_REVPK
+                "VPK header signature should be {VPK_SIGNATURE_REVPK:#x}"
             ));
         }
         if self.version != VPK_VERSION_REVPK {
             return Err(format!(
-                "VPK header version should be {}",
-                VPK_VERSION_REVPK
+                "VPK header version should be {VPK_VERSION_REVPK}"
             ));
         }
 
@@ -147,8 +143,14 @@ pub struct VPKDirectoryEntryRespawn {
     pub file_parts: Vec<VPKFilePartEntryRespawn>,
 }
 
+impl Default for VPKDirectoryEntryRespawn {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VPKDirectoryEntryRespawn {
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self {
             crc: 0,
             preload_length: 0,
@@ -193,7 +195,7 @@ impl DirEntry for VPKDirectoryEntryRespawn {
         })
     }
 
-    fn write(self: &Self, file: &mut File) -> Result<(), String> {
+    fn write(&self, file: &mut File) -> Result<(), String> {
         file.write_u32(self.crc).or(Err("Failed to write CRC"))?;
         file.write_u16(self.preload_length)
             .or(Err("Failed to write preload length"))?;
@@ -219,7 +221,7 @@ impl DirEntry for VPKDirectoryEntryRespawn {
         Ok(())
     }
 
-    fn get_preload_length(self: &Self) -> usize {
+    fn get_preload_length(&self) -> usize {
         self.preload_length as _
     }
 }
@@ -242,8 +244,14 @@ pub struct VPKFilePartEntryRespawn {
     pub entry_length_uncompressed: u64,
 }
 
+impl Default for VPKFilePartEntryRespawn {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VPKFilePartEntryRespawn {
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self {
             archive_index: 0,
             load_flags: 0,
@@ -298,7 +306,7 @@ impl VPKRespawnCam {
     }
 
     /// Find the entry in a CAM for a given offset.
-    pub fn find_entry(&self, vpk_content_offset: u64) -> Option<&VPKRespawnCamEntry> {
+    #[must_use] pub fn find_entry(&self, vpk_content_offset: u64) -> Option<&VPKRespawnCamEntry> {
         self.entries.get(&vpk_content_offset)
     }
 }
@@ -326,9 +334,15 @@ pub struct VPKRespawnCamEntry {
     pub vpk_content_offset: u64,
 }
 
+impl Default for VPKRespawnCamEntry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VPKRespawnCamEntry {
     /// Create a new CAM entry with default values.
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self {
             magic: RESPAWN_CAM_ENTRY_MAGIC,
             original_size: 0,
@@ -342,7 +356,7 @@ impl VPKRespawnCamEntry {
     }
 
     /// Create a CAM entry with default values for the given directory entry.
-    pub fn default(entry: &VPKDirectoryEntryRespawn) -> Self {
+    #[must_use] pub fn default(entry: &VPKDirectoryEntryRespawn) -> Self {
         let original_size: u32 = entry
             .file_parts
             .iter()
@@ -407,7 +421,7 @@ impl PakReader for VPKRespawn {
     }
 
     fn read_file(
-        self: &Self,
+        &self,
         archive_path: &String,
         vpk_name: &String,
         file_path: &String,
@@ -419,7 +433,7 @@ impl PakReader for VPKRespawn {
             buf.append(self.tree.preload.get(file_path)?.clone().as_mut());
         }
 
-        if entry.file_parts.len() == 0 {
+        if entry.file_parts.is_empty() {
             return None;
         }
 
@@ -484,9 +498,9 @@ impl PakReader for VPKRespawn {
                     // Truncate WAV files that exceed their expected length
                     if expected_len > 0
                         && file_path.ends_with(".wav")
-                        && total_len > expected_len as _
+                        && total_len > expected_len.into()
                     {
-                        let new_len = (entry_len as u64) + (expected_len as u64) - total_len;
+                        let new_len = entry_len + u64::from(expected_len) - total_len;
                         part.truncate(new_len as _);
                     }
 
@@ -519,7 +533,7 @@ impl PakReader for VPKRespawn {
     }
 
     fn extract_file(
-        self: &Self,
+        &self,
         archive_path: &String,
         vpk_name: &String,
         file_path: &String,
@@ -548,14 +562,14 @@ impl PakReader for VPKRespawn {
                 .get(file_path)
                 .ok_or("Preload data not found in VPK")?;
 
-            digest.update(&preload_data);
+            digest.update(preload_data);
 
             out_file
-                .write_all(&preload_data)
+                .write_all(preload_data)
                 .or(Err("Failed to write to output file"))?;
         }
 
-        if entry.file_parts.len() == 0 {
+        if entry.file_parts.is_empty() {
             return Err("File had no parts".to_string());
         }
 
@@ -596,7 +610,7 @@ impl PakReader for VPKRespawn {
                 if file_part.archive_index != archive_index {
                     archive_index = file_part.archive_index;
                     let path = Path::new(archive_path)
-                        .join(format!("{}_{:0>3}.vpk", vpk_name, archive_index,));
+                        .join(format!("{vpk_name}_{archive_index:0>3}.vpk",));
                     archive_file = File::open(path).or(Err("Failed to open archive file"))?;
                 }
 
@@ -618,9 +632,9 @@ impl PakReader for VPKRespawn {
                     // Truncate WAV files that exceed their expected length
                     if expected_len > 0
                         && file_path.ends_with(".wav")
-                        && total_len > expected_len as _
+                        && total_len > expected_len.into()
                     {
-                        let new_len = (entry_len as u64) + (expected_len as u64) - total_len;
+                        let new_len = entry_len + u64::from(expected_len) - total_len;
                         part.truncate(new_len as _);
                     }
 
@@ -656,7 +670,7 @@ impl PakReader for VPKRespawn {
 
     #[cfg(feature = "mem-map")]
     fn extract_file_mem_map(
-        self: &Self,
+        &self,
         archive_path: &String,
         archive_mmaps: &HashMap<u16, FileBuffer>,
         vpk_name: &String,
@@ -686,14 +700,14 @@ impl PakReader for VPKRespawn {
                 .get(file_path)
                 .ok_or("Preload data not found in VPK")?;
 
-            digest.update(&preload_data);
+            digest.update(preload_data);
 
             out_file
-                .write_all(&preload_data)
+                .write_all(preload_data)
                 .or(Err("Failed to write to output file"))?;
         }
 
-        if entry.file_parts.len() == 0 {
+        if entry.file_parts.is_empty() {
             return Err("File had no parts".to_string());
         }
 
@@ -741,7 +755,7 @@ impl PakReader for VPKRespawn {
 
         // Set the length of the file
         out_file
-            .set_len(expected_len as _)
+            .set_len(expected_len.into())
             .or(Err("Failed to set length of output file"))?;
 
         let mut total_len = 0;
@@ -770,7 +784,7 @@ impl PakReader for VPKRespawn {
                 let mut entry_len = file_part.entry_length;
 
                 if i == 0 && file_path.ends_with(".wav") {
-                    let seek = seek_to_wav_data_mem_map(&archive_file, entry_offset)?;
+                    let seek = seek_to_wav_data_mem_map(archive_file, entry_offset)?;
                     entry_offset += seek;
                     entry_len -= seek;
                 }
@@ -781,9 +795,9 @@ impl PakReader for VPKRespawn {
                     // Truncate WAV files that exceed their expected length
                     if expected_len > 0
                         && file_path.ends_with(".wav")
-                        && total_len > expected_len as _
+                        && total_len > expected_len.into()
                     {
-                        entry_len = (entry_len as u64) + (expected_len as u64) - total_len;
+                        entry_len = entry_len + u64::from(expected_len) - total_len;
                     }
 
                     let part =
@@ -825,7 +839,7 @@ impl PakReader for VPKRespawn {
 }
 
 impl PakWriter for VPKRespawn {
-    fn write_dir(self: &Self, output_path: &String) -> Result<(), String> {
+    fn write_dir(&self, output_path: &String) -> Result<(), String> {
         let out_path = std::path::Path::new(output_path);
         if let Some(prefix) = out_path.parent() {
             std::fs::create_dir_all(prefix).or(Err("Failed to create parent directories"))?;
@@ -842,10 +856,9 @@ impl PakWriter for VPKRespawn {
 
 impl VPKRespawn {
     /// Reads a CAM file and adds it to the map of parsed CAMs for this VPK
-    pub fn read_cam(self: &mut Self, archive_index: u16, cam_path: &String) -> Result<(), String> {
+    pub fn read_cam(&mut self, archive_index: u16, cam_path: &String) -> Result<(), String> {
         let mut cam_file = File::open(cam_path).or(Err(format!(
-            "Failed to open CAM file for archive {}",
-            archive_index
+            "Failed to open CAM file for archive {archive_index}"
         )))?;
 
         let cam = VPKRespawnCam::from_file(&mut cam_file)?;
@@ -856,12 +869,12 @@ impl VPKRespawn {
 
     /// Reads all CAM files for this VPK and adds them to the map of parsed CAMs for this VPK
     pub fn read_all_cams(
-        self: &mut Self,
+        &mut self,
         archive_path: &String,
         vpk_name: &String,
     ) -> Result<(), String> {
         let mut archive_indices = HashSet::<u16>::new();
-        for (path, entry) in self.tree.files.iter_mut() {
+        for (path, entry) in &mut self.tree.files {
             let archive_index = entry.file_parts[0].archive_index;
             if path.ends_with(".wav") {
                 archive_indices.insert(archive_index);
@@ -881,17 +894,16 @@ impl VPKRespawn {
                     ))
                     .to_str()
                     .ok_or(format!(
-                        "Failed to determine CAM path for archive {}",
-                        archive_index
+                        "Failed to determine CAM path for archive {archive_index}"
                     ))?
                     .to_string();
 
                 match self.read_cam(archive_index, &cam_path) {
-                    Ok(_) => (),
+                    Ok(()) => (),
                     Err(err) => {
                         res = match res {
-                            Ok(_) => Err(format!("Encountered erors reading CAM files: {}", err)),
-                            Err(org) => Err(format!("{}, {}", org, err)),
+                            Ok(()) => Err(format!("Encountered erors reading CAM files: {err}")),
+                            Err(org) => Err(format!("{org}, {err}")),
                         };
                     }
                 };
