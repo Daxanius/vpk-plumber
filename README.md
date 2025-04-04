@@ -1,4 +1,6 @@
 # vpk-plumber
+[![Rust](https://github.com/Daxanius/vpk-plumber/actions/workflows/rust.yml/badge.svg?branch=develop)](https://github.com/Daxanius/vpk-plumber/actions/workflows/rust.yml)
+
 vpk-plumber is a fork of [sourcepak](https://github.com/barnabwhy/sourcepak-rs). It provides support for working with [VPK files](https://developer.valvesoftware.com/wiki/VPK_(file_format)). It allows you to read and write VPK files, as well as extract and pack their contents.
 
 ## Features
