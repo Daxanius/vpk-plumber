@@ -1,9 +1,9 @@
 //! Support for the Respawn VPK format.
 
 use crate::common::file::{VPKFileReader, VPKFileWriter};
-use crate::common::format::{DirEntry, PakReader, PakWriter, VPKTree, VPK_ENTRY_TERMINATOR};
+use crate::common::format::{DirEntry, PakReader, PakWriter, VPK_ENTRY_TERMINATOR, VPKTree};
 use crate::common::lzham::decompress;
-use crc::{Crc, CRC_32_ISO_HDLC};
+use crc::{CRC_32_ISO_HDLC, Crc};
 #[cfg(feature = "mem-map")]
 use filebuffer::FileBuffer;
 use std::collections::{HashMap, HashSet};
@@ -60,9 +60,7 @@ impl VPKHeaderRespawn {
             ));
         }
         if version != VPK_VERSION_REVPK {
-            return Err(format!(
-                "VPK header version should be {VPK_VERSION_REVPK}"
-            ));
+            return Err(format!("VPK header version should be {VPK_VERSION_REVPK}"));
         }
         if unknown != 0 {
             return Err("VPK header unknown field should be 0".to_string());
@@ -84,9 +82,7 @@ impl VPKHeaderRespawn {
             ));
         }
         if self.version != VPK_VERSION_REVPK {
-            return Err(format!(
-                "VPK header version should be {VPK_VERSION_REVPK}"
-            ));
+            return Err(format!("VPK header version should be {VPK_VERSION_REVPK}"));
         }
 
         file.write_u32(self.signature)
@@ -150,7 +146,8 @@ impl Default for VPKDirectoryEntryRespawn {
 }
 
 impl VPKDirectoryEntryRespawn {
-    #[must_use] pub fn new() -> Self {
+    #[must_use]
+    pub fn new() -> Self {
         Self {
             crc: 0,
             preload_length: 0,
@@ -251,7 +248,8 @@ impl Default for VPKFilePartEntryRespawn {
 }
 
 impl VPKFilePartEntryRespawn {
-    #[must_use] pub fn new() -> Self {
+    #[must_use]
+    pub fn new() -> Self {
         Self {
             archive_index: 0,
             load_flags: 0,
@@ -306,7 +304,8 @@ impl VPKRespawnCam {
     }
 
     /// Find the entry in a CAM for a given offset.
-    #[must_use] pub fn find_entry(&self, vpk_content_offset: u64) -> Option<&VPKRespawnCamEntry> {
+    #[must_use]
+    pub fn find_entry(&self, vpk_content_offset: u64) -> Option<&VPKRespawnCamEntry> {
         self.entries.get(&vpk_content_offset)
     }
 }
@@ -342,7 +341,8 @@ impl Default for VPKRespawnCamEntry {
 
 impl VPKRespawnCamEntry {
     /// Create a new CAM entry with default values.
-    #[must_use] pub fn new() -> Self {
+    #[must_use]
+    pub fn new() -> Self {
         Self {
             magic: RESPAWN_CAM_ENTRY_MAGIC,
             original_size: 0,
@@ -356,7 +356,8 @@ impl VPKRespawnCamEntry {
     }
 
     /// Create a CAM entry with default values for the given directory entry.
-    #[must_use] pub fn default(entry: &VPKDirectoryEntryRespawn) -> Self {
+    #[must_use]
+    pub fn default(entry: &VPKDirectoryEntryRespawn) -> Self {
         let original_size: u32 = entry
             .file_parts
             .iter()
@@ -450,7 +451,10 @@ impl PakReader for VPKRespawn {
 
         // We have to do extra processing if it's a wav file
         let mut expected_len = 0;
-        if file_path.ends_with(".wav") {
+        if std::path::Path::new(file_path)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"))
+        {
             let cam_entry = if let Some(cam) = self.archive_cams.get(&archive_index) {
                 if let Some(cam_entry) = cam.find_entry(entry.file_parts[0].entry_offset) {
                     cam_entry.to_owned()
@@ -486,7 +490,11 @@ impl PakReader for VPKRespawn {
 
                 let mut entry_len = file_part.entry_length;
 
-                if i == 0 && file_path.ends_with(".wav") {
+                if i == 0
+                    && std::path::Path::new(file_path)
+                        .extension()
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"))
+                {
                     entry_len -= seek_to_wav_data(&mut archive_file).ok()?;
                 }
 
@@ -497,7 +505,9 @@ impl PakReader for VPKRespawn {
 
                     // Truncate WAV files that exceed their expected length
                     if expected_len > 0
-                        && file_path.ends_with(".wav")
+                        && std::path::Path::new(file_path)
+                            .extension()
+                            .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"))
                         && total_len > expected_len.into()
                     {
                         let new_len = entry_len + u64::from(expected_len) - total_len;
@@ -516,7 +526,11 @@ impl PakReader for VPKRespawn {
         }
 
         // Truncate WAV files that exceed their expected length
-        if expected_len > 0 && file_path.ends_with(".wav") {
+        if expected_len > 0
+            && std::path::Path::new(file_path)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"))
+        {
             buf.truncate(expected_len as _);
         }
 
@@ -525,7 +539,11 @@ impl PakReader for VPKRespawn {
         digest.update(&buf);
 
         // We can't check CRCs on wav files because the CRC wasn't calculated with the actual unpacked data
-        if digest.finalize() != entry.crc && !file_path.ends_with(".wav") {
+        if digest.finalize() != entry.crc
+            && !std::path::Path::new(file_path)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"))
+        {
             None
         } else {
             Some(buf)
@@ -584,7 +602,10 @@ impl PakReader for VPKRespawn {
 
         // We have to do extra processing if it's a wav file
         let mut expected_len = 0;
-        if file_path.ends_with(".wav") {
+        if std::path::Path::new(file_path)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"))
+        {
             let cam_entry = if let Some(cam) = self.archive_cams.get(&archive_index) {
                 if let Some(cam_entry) = cam.find_entry(entry.file_parts[0].entry_offset) {
                     cam_entry.to_owned()
@@ -618,7 +639,11 @@ impl PakReader for VPKRespawn {
 
                 let mut entry_len = file_part.entry_length;
 
-                if i == 0 && file_path.ends_with(".wav") {
+                if i == 0
+                    && std::path::Path::new(file_path)
+                        .extension()
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"))
+                {
                     entry_len -= seek_to_wav_data(&mut archive_file)?;
                 }
 
@@ -631,7 +656,9 @@ impl PakReader for VPKRespawn {
 
                     // Truncate WAV files that exceed their expected length
                     if expected_len > 0
-                        && file_path.ends_with(".wav")
+                        && std::path::Path::new(file_path)
+                            .extension()
+                            .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"))
                         && total_len > expected_len.into()
                     {
                         let new_len = entry_len + u64::from(expected_len) - total_len;
@@ -661,7 +688,11 @@ impl PakReader for VPKRespawn {
         }
 
         // We can't check CRCs on wav files because the CRC wasn't calculated with the actual unpacked data
-        if digest.finalize() != entry.crc && !file_path.ends_with(".wav") {
+        if digest.finalize() != entry.crc
+            && !std::path::Path::new(file_path)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"))
+        {
             Err("CRC must match".to_string())
         } else {
             Ok(())
@@ -733,7 +764,10 @@ impl PakReader for VPKRespawn {
             .iter()
             .map(|e| e.entry_length_uncompressed as u32)
             .sum();
-        if file_path.ends_with(".wav") {
+        if std::path::Path::new(file_path)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"))
+        {
             let cam_entry = if let Some(cam) = self.archive_cams.get(&archive_index) {
                 if let Some(cam_entry) = cam.find_entry(entry.file_parts[0].entry_offset) {
                     cam_entry.to_owned()
@@ -783,7 +817,11 @@ impl PakReader for VPKRespawn {
                 let mut entry_offset = file_part.entry_offset;
                 let mut entry_len = file_part.entry_length;
 
-                if i == 0 && file_path.ends_with(".wav") {
+                if i == 0
+                    && std::path::Path::new(file_path)
+                        .extension()
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"))
+                {
                     let seek = seek_to_wav_data_mem_map(archive_file, entry_offset)?;
                     entry_offset += seek;
                     entry_len -= seek;
@@ -794,7 +832,9 @@ impl PakReader for VPKRespawn {
                 if file_part.entry_length == file_part.entry_length_uncompressed {
                     // Truncate WAV files that exceed their expected length
                     if expected_len > 0
-                        && file_path.ends_with(".wav")
+                        && std::path::Path::new(file_path)
+                            .extension()
+                            .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"))
                         && total_len > expected_len.into()
                     {
                         entry_len = entry_len + u64::from(expected_len) - total_len;
@@ -830,7 +870,11 @@ impl PakReader for VPKRespawn {
         }
 
         // We can't check CRCs on wav files because the CRC wasn't calculated with the actual unpacked data
-        if digest.finalize() != entry.crc && !file_path.ends_with(".wav") {
+        if digest.finalize() != entry.crc
+            && !std::path::Path::new(file_path)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"))
+        {
             Err("CRC must match".to_string())
         } else {
             Ok(())

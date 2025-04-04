@@ -2,7 +2,7 @@
 
 use crate::common::file::{VPKFileReader, VPKFileWriter};
 use crate::common::format::{PakReader, PakWriter, VPKDirectoryEntry, VPKTree};
-use crc::{Crc, CRC_32_ISO_HDLC};
+use crc::{CRC_32_ISO_HDLC, Crc};
 use std::cmp::min;
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
@@ -15,7 +15,7 @@ use filebuffer::FileBuffer;
 use std::collections::HashMap;
 
 /// The 4-byte signature found in the header of a valid VPK version 1 file.
-pub const VPK_SIGNATURE_V1: u32 = 0x55AA1234;
+pub const VPK_SIGNATURE_V1: u32 = 0x55AA_1234;
 /// The 4-byte version found in the header of a valid VPK version 1 file.
 pub const VPK_VERSION_V1: u32 = 1;
 

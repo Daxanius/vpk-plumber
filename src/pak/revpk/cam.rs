@@ -9,21 +9,22 @@ use super::format::VPKRespawnCamEntry;
 
 const SAMPLE_DEPTH: u16 = 16;
 
-#[must_use] pub fn create_wav_header(cam_entry: &VPKRespawnCamEntry) -> Vec<u8> {
+#[must_use]
+pub fn create_wav_header(cam_entry: &VPKRespawnCamEntry) -> Vec<u8> {
     let mut header = [0u8; 44];
 
     // "RIFF" magic
-    header[0..4].copy_from_slice(&0x52494646_u32.to_be_bytes());
+    header[0..4].copy_from_slice(&0x5249_4646_u32.to_be_bytes());
 
     // File size
     let file_len: u32 = 2 * cam_entry.sample_count * u32::from(cam_entry.channels);
     header[4..8].copy_from_slice(&(file_len - 8 + 44).to_le_bytes());
 
     // "RIFF" magic
-    header[8..12].copy_from_slice(&0x57415645_u32.to_be_bytes());
+    header[8..12].copy_from_slice(&0x5741_5645_u32.to_be_bytes());
 
     // "fmt\20" magic
-    header[12..16].copy_from_slice(&0x666D7420_u32.to_be_bytes());
+    header[12..16].copy_from_slice(&0x666D_7420_u32.to_be_bytes());
 
     // Format data length
     header[16..20].copy_from_slice(&16_u32.to_le_bytes());
@@ -38,17 +39,19 @@ const SAMPLE_DEPTH: u16 = 16;
     header[24..28].copy_from_slice(&cam_entry.sample_rate.to_le_bytes());
 
     // Sample rate * sample depth * channels / 8
-    let bytes_per_sec = cam_entry.sample_rate * u32::from(SAMPLE_DEPTH) * u32::from(cam_entry.channels) / 8;
+    let bytes_per_sec =
+        cam_entry.sample_rate * u32::from(SAMPLE_DEPTH) * u32::from(cam_entry.channels) / 8;
     header[28..32].copy_from_slice(&bytes_per_sec.to_le_bytes());
 
     // Sample depth * channels / 8
-    header[32..34].copy_from_slice(&(SAMPLE_DEPTH * u16::from(cam_entry.channels) / 8).to_le_bytes());
+    header[32..34]
+        .copy_from_slice(&(SAMPLE_DEPTH * u16::from(cam_entry.channels) / 8).to_le_bytes());
 
     // Sample depth
     header[34..36].copy_from_slice(&SAMPLE_DEPTH.to_le_bytes());
 
     // "data" magic
-    header[36..40].copy_from_slice(&0x64617461_u32.to_be_bytes());
+    header[36..40].copy_from_slice(&0x6461_7461_u32.to_be_bytes());
 
     // File length
     header[40..44].copy_from_slice(&file_len.to_le_bytes());

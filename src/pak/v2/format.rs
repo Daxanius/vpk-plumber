@@ -13,7 +13,7 @@ use filebuffer::FileBuffer;
 use std::collections::HashMap;
 
 /// The 4-byte signature found in the header of a valid VPK version 2 file.
-pub const VPK_SIGNATURE_V2: u32 = 0x55AA1234;
+pub const VPK_SIGNATURE_V2: u32 = 0x55AA_1234;
 /// The 4-byte version found in the header of a valid VPK version 2 file.
 pub const VPK_VERSION_V2: u32 = 2;
 
@@ -128,7 +128,8 @@ impl Default for VPKOtherMD5Section {
 }
 
 impl VPKOtherMD5Section {
-    #[must_use] pub fn new() -> Self {
+    #[must_use]
+    pub fn new() -> Self {
         Self {
             tree_checksum: vec![0; 16],
             archive_md5_section_checksum: vec![0; 16],
