@@ -29,21 +29,21 @@ pub trait VPKFileReader {
 impl VPKFileReader for File {
     fn read_u8(&mut self) -> Result<u8> {
         let mut b: [u8; 1] = [0];
-        self.read(&mut b)?;
+        self.read_exact(&mut b)?;
 
         Ok(b[0])
     }
 
     fn read_u16(&mut self) -> Result<u16> {
         let mut b: [u8; 2] = [0, 0];
-        self.read(&mut b)?;
+        self.read_exact(&mut b)?;
 
         Ok(u16::from_le_bytes(b))
     }
 
     fn read_u24(&mut self) -> Result<u32> {
         let mut b: [u8; 3] = [0, 0, 0];
-        self.read(&mut b)?;
+        self.read_exact(&mut b)?;
 
         let b_u32: [u8; 4] = [b[0], b[1], b[2], 0];
 
@@ -52,31 +52,32 @@ impl VPKFileReader for File {
 
     fn read_u32(&mut self) -> Result<u32> {
         let mut b: [u8; 4] = [0, 0, 0, 0];
-        self.read(&mut b)?;
+        self.read_exact(&mut b)?;
 
         Ok(u32::from_le_bytes(b))
     }
 
     fn read_u64(&mut self) -> Result<u64> {
         let mut b: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
-        self.read(&mut b)?;
+        self.read_exact(&mut b)?;
 
         Ok(u64::from_le_bytes(b))
     }
 
     fn read_string(&mut self) -> Result<String> {
-        let mut str_buf = Vec::new();
+        let mut str = String::new();
         loop {
             let mut b: [u8; 1] = [0];
-            self.read(&mut b)?;
+            _ = self.read(&mut b)?;
 
             if b[0] == 0 {
                 break;
             }
-            str_buf.push(b[0]);
+
+            str.push(b[0] as char);
         }
 
-        Ok(String::from_utf8(str_buf).unwrap())
+        Ok(str)
     }
 
     fn read_bytes(&mut self, count: usize) -> Result<Vec<u8>> {
@@ -126,7 +127,7 @@ impl VPKFileWriter for File {
 
     fn write_u24(&mut self, val: u32) -> Result<()> {
         let b = u32::to_le_bytes(val);
-        self.write(&b[0..3])?;
+        self.write_all(&b[0..3])?;
 
         Ok(())
     }

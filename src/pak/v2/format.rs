@@ -46,41 +46,54 @@ impl VPKHeaderV2 {
         let signature = file
             .read_u32()
             .or(Err("Could not read header signature from file"))?;
+
+        // Check the signature before moving on
+        if signature != VPK_SIGNATURE_V2 {
+            return Err(format!(
+                "VPK header signature should be {VPK_SIGNATURE_V2:#x}"
+            ));
+        }
+
         let version = file
             .read_u32()
             .or(Err("Could not read header version from file"))?;
+
+        // Check the version before moving on
+        if version != VPK_VERSION_V2 {
+            return Err(format!("VPK header version should be {VPK_VERSION_V2}"));
+        }
+
         let tree_size = file
             .read_u32()
             .or(Err("Could not read header tree size from file"))?;
         let file_data_section_size = file.read_u32().or(Err(
             "Could not read header file data section size from file",
         ))?;
+
         let archive_md5_section_size = file.read_u32().or(Err(
             "Could not read header archive MD5 section size from file",
         ))?;
-        let other_md5_section_size = file.read_u32().or(Err(
-            "Could not read header other MD5 section size from file",
-        ))?;
-        let signature_section_size = file.read_u32().or(Err(
-            "Could not read header signature section size from file",
-        ))?;
 
-        if signature != VPK_SIGNATURE_V2 {
-            return Err(format!(
-                "VPK header signature should be {VPK_SIGNATURE_V2:#x}"
-            ));
-        }
-        if version != VPK_VERSION_V2 {
-            return Err(format!("VPK header version should be {VPK_VERSION_V2}"));
-        }
+        // Check the archive md5 section size
         if archive_md5_section_size % 28 != 0 {
             return Err(
                 "VPK header archive MD5 section size should be a multiple of 28".to_string(),
             );
         }
+
+        let other_md5_section_size = file.read_u32().or(Err(
+            "Could not read header other MD5 section size from file",
+        ))?;
+
+        // Check the other section size
         if other_md5_section_size != 48 {
             return Err("VPK header other MD5 section size should be 48".to_string());
         }
+
+        let signature_section_size = file.read_u32().or(Err(
+            "Could not read header signature section size from file",
+        ))?;
+
         if signature_section_size != 0 && signature_section_size != 296 {
             return Err("VPK header signature section size should be 0 or 296".to_string());
         }

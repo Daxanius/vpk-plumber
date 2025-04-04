@@ -44,9 +44,23 @@ impl VPKHeaderRespawn {
         let signature = file
             .read_u32()
             .or(Err("Could not read header signature from file"))?;
+
+        // Check the signature before moving on
+        if signature != VPK_SIGNATURE_REVPK {
+            return Err(format!(
+                "VPK header signature should be {VPK_SIGNATURE_REVPK:#x}"
+            ));
+        }
+
         let version = file
             .read_u32()
             .or(Err("Could not read header version from file"))?;
+
+        // Check the version before moving on
+        if version != VPK_VERSION_REVPK {
+            return Err(format!("VPK header version should be {VPK_VERSION_REVPK}"));
+        }
+
         let tree_size = file
             .read_u32()
             .or(Err("Could not read header version from file"))?;
@@ -54,14 +68,6 @@ impl VPKHeaderRespawn {
             .read_u32()
             .or(Err("Could not read unknown field from file"))?;
 
-        if signature != VPK_SIGNATURE_REVPK {
-            return Err(format!(
-                "VPK header signature should be {VPK_SIGNATURE_REVPK:#x}"
-            ));
-        }
-        if version != VPK_VERSION_REVPK {
-            return Err(format!("VPK header version should be {VPK_VERSION_REVPK}"));
-        }
         if unknown != 0 {
             return Err("VPK header unknown field should be 0".to_string());
         }

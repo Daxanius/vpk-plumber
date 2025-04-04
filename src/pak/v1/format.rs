@@ -37,21 +37,26 @@ impl VPKHeaderV1 {
         let signature = file
             .read_u32()
             .or(Err("Could not read header signature from file"))?;
-        let version = file
-            .read_u32()
-            .or(Err("Could not read header version from file"))?;
-        let tree_size = file
-            .read_u32()
-            .or(Err("Could not read header tree size from file"))?;
 
+        // Check the signature before moving on
         if signature != VPK_SIGNATURE_V1 {
             return Err(format!(
                 "VPK header signature should be {VPK_SIGNATURE_V1:#x}"
             ));
         }
+
+        let version = file
+            .read_u32()
+            .or(Err("Could not read header version from file"))?;
+
+        // Check the version before moving on
         if version != VPK_VERSION_V1 {
             return Err(format!("VPK header version should be {VPK_VERSION_V1}"));
         }
+
+        let tree_size = file
+            .read_u32()
+            .or(Err("Could not read header tree size from file"))?;
 
         Ok(Self {
             signature,
@@ -198,7 +203,7 @@ impl PakReader for VPKVersion1 {
         let out_path = std::path::Path::new(output_path);
         if let Some(prefix) = out_path.parent() {
             std::fs::create_dir_all(prefix).or(Err("Failed to create parent directories"))?;
-        };
+        }
 
         let mut out_file = File::create(out_path).or(Err("Failed to create output file"))?;
 
