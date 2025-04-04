@@ -28,7 +28,7 @@ impl fmt::Display for PakFormat {
             PakFormat::VPKRespawn => "VPK Respawn",
         };
 
-        write!(f, "{}", str)
+        write!(f, "{str}")
     }
 }
 

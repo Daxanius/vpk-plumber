@@ -13,7 +13,7 @@ use filebuffer::FileBuffer;
 use std::collections::HashMap;
 
 /// The 4-byte signature found in the header of a valid VPK version 2 file.
-pub const VPK_SIGNATURE_V2: u32 = 0x55AA1234;
+pub const VPK_SIGNATURE_V2: u32 = 0x55AA_1234;
 /// The 4-byte version found in the header of a valid VPK version 2 file.
 pub const VPK_VERSION_V2: u32 = 2;
 
@@ -46,42 +46,54 @@ impl VPKHeaderV2 {
         let signature = file
             .read_u32()
             .or(Err("Could not read header signature from file"))?;
+
+        // Check the signature before moving on
+        if signature != VPK_SIGNATURE_V2 {
+            return Err(format!(
+                "VPK header signature should be {VPK_SIGNATURE_V2:#x}"
+            ));
+        }
+
         let version = file
             .read_u32()
             .or(Err("Could not read header version from file"))?;
+
+        // Check the version before moving on
+        if version != VPK_VERSION_V2 {
+            return Err(format!("VPK header version should be {VPK_VERSION_V2}"));
+        }
+
         let tree_size = file
             .read_u32()
             .or(Err("Could not read header tree size from file"))?;
         let file_data_section_size = file.read_u32().or(Err(
             "Could not read header file data section size from file",
         ))?;
+
         let archive_md5_section_size = file.read_u32().or(Err(
             "Could not read header archive MD5 section size from file",
         ))?;
-        let other_md5_section_size = file.read_u32().or(Err(
-            "Could not read header other MD5 section size from file",
-        ))?;
-        let signature_section_size = file.read_u32().or(Err(
-            "Could not read header signature section size from file",
-        ))?;
 
-        if signature != VPK_SIGNATURE_V2 {
-            return Err(format!(
-                "VPK header signature should be {:#x}",
-                VPK_SIGNATURE_V2
-            ));
-        }
-        if version != VPK_VERSION_V2 {
-            return Err(format!("VPK header version should be {}", VPK_VERSION_V2));
-        }
+        // Check the archive md5 section size
         if archive_md5_section_size % 28 != 0 {
             return Err(
                 "VPK header archive MD5 section size should be a multiple of 28".to_string(),
             );
         }
+
+        let other_md5_section_size = file.read_u32().or(Err(
+            "Could not read header other MD5 section size from file",
+        ))?;
+
+        // Check the other section size
         if other_md5_section_size != 48 {
             return Err("VPK header other MD5 section size should be 48".to_string());
         }
+
+        let signature_section_size = file.read_u32().or(Err(
+            "Could not read header signature section size from file",
+        ))?;
+
         if signature_section_size != 0 && signature_section_size != 296 {
             return Err("VPK header signature section size should be 0 or 296".to_string());
         }
@@ -122,7 +134,14 @@ pub struct VPKOtherMD5Section {
     pub archive_md5_section_checksum: Vec<u8>, // len: 16
     pub unknown: Vec<u8>,                      // len: 16
 }
+impl Default for VPKOtherMD5Section {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VPKOtherMD5Section {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             tree_checksum: vec![0; 16],
@@ -239,7 +258,7 @@ impl PakReader for VPKVersion2 {
             })
         } else {
             let _ = file.seek(std::io::SeekFrom::Current(
-                header.signature_section_size as _,
+                header.signature_section_size.into(),
             ));
             None
         };
@@ -255,7 +274,7 @@ impl PakReader for VPKVersion2 {
     }
 
     fn read_file(
-        self: &Self,
+        &self,
         _archive_path: &String,
         _vpk_name: &String,
         _file_path: &String,
@@ -264,7 +283,7 @@ impl PakReader for VPKVersion2 {
     }
 
     fn extract_file(
-        self: &Self,
+        &self,
         _archive_path: &String,
         _vpk_name: &String,
         _file_path: &String,
@@ -275,7 +294,7 @@ impl PakReader for VPKVersion2 {
 
     #[cfg(feature = "mem-map")]
     fn extract_file_mem_map(
-        self: &Self,
+        &self,
         _archive_path: &String,
         _archive_mmaps: &HashMap<u16, FileBuffer>,
         _vpk_name: &String,
@@ -287,7 +306,7 @@ impl PakReader for VPKVersion2 {
 }
 
 impl PakWriter for VPKVersion2 {
-    fn write_dir(self: &Self, _out_path: &String) -> Result<(), String> {
+    fn write_dir(&self, _out_path: &String) -> Result<(), String> {
         todo!()
     }
 }

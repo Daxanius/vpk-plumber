@@ -2,7 +2,7 @@
 
 use crate::common::file::{VPKFileReader, VPKFileWriter};
 use crate::common::format::{PakReader, PakWriter, VPKDirectoryEntry, VPKTree};
-use crc::{Crc, CRC_32_ISO_HDLC};
+use crc::{CRC_32_ISO_HDLC, Crc};
 use std::cmp::min;
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
@@ -15,7 +15,7 @@ use filebuffer::FileBuffer;
 use std::collections::HashMap;
 
 /// The 4-byte signature found in the header of a valid VPK version 1 file.
-pub const VPK_SIGNATURE_V1: u32 = 0x55AA1234;
+pub const VPK_SIGNATURE_V1: u32 = 0x55AA_1234;
 /// The 4-byte version found in the header of a valid VPK version 1 file.
 pub const VPK_VERSION_V1: u32 = 1;
 
@@ -37,22 +37,26 @@ impl VPKHeaderV1 {
         let signature = file
             .read_u32()
             .or(Err("Could not read header signature from file"))?;
+
+        // Check the signature before moving on
+        if signature != VPK_SIGNATURE_V1 {
+            return Err(format!(
+                "VPK header signature should be {VPK_SIGNATURE_V1:#x}"
+            ));
+        }
+
         let version = file
             .read_u32()
             .or(Err("Could not read header version from file"))?;
+
+        // Check the version before moving on
+        if version != VPK_VERSION_V1 {
+            return Err(format!("VPK header version should be {VPK_VERSION_V1}"));
+        }
+
         let tree_size = file
             .read_u32()
             .or(Err("Could not read header tree size from file"))?;
-
-        if signature != VPK_SIGNATURE_V1 {
-            return Err(format!(
-                "VPK header signature should be {:#x}",
-                VPK_SIGNATURE_V1
-            ));
-        }
-        if version != VPK_VERSION_V1 {
-            return Err(format!("VPK header version should be {}", VPK_VERSION_V1));
-        }
 
         Ok(Self {
             signature,
@@ -62,15 +66,14 @@ impl VPKHeaderV1 {
     }
 
     /// Write the header to a file.
-    pub fn write(self: &Self, file: &mut File) -> Result<(), String> {
+    pub fn write(&self, file: &mut File) -> Result<(), String> {
         if self.signature != VPK_SIGNATURE_V1 {
             return Err(format!(
-                "VPK header signature should be {:#x}",
-                VPK_SIGNATURE_V1
+                "VPK header signature should be {VPK_SIGNATURE_V1:#x}"
             ));
         }
         if self.version != VPK_VERSION_V1 {
-            return Err(format!("VPK header version should be {}", VPK_VERSION_V1));
+            return Err(format!("VPK header version should be {VPK_VERSION_V1}"));
         }
 
         file.write_u32(self.signature)
@@ -127,7 +130,7 @@ impl PakReader for VPKVersion1 {
     }
 
     fn read_file(
-        self: &Self,
+        &self,
         archive_path: &String,
         vpk_name: &String,
         file_path: &String,
@@ -141,13 +144,13 @@ impl PakReader for VPKVersion1 {
 
         if entry.entry_length > 0 {
             let mut archive_file = if entry.archive_index == 0xFF7F {
-                let path = Path::new(archive_path).join(format!("{}_dir.vpk", vpk_name));
+                let path = Path::new(archive_path).join(format!("{vpk_name}_dir.vpk"));
 
                 let mut archive_file = File::open(path).ok()?;
                 let _ = archive_file.seek(SeekFrom::Start(
                     mem::size_of::<VPKHeaderV1>() as u64
-                        + self.header.tree_size as u64
-                        + entry.entry_offset as u64,
+                        + u64::from(self.header.tree_size)
+                        + u64::from(entry.entry_offset),
                 ));
                 archive_file
             } else {
@@ -158,7 +161,7 @@ impl PakReader for VPKVersion1 {
                 ));
 
                 let mut archive_file = File::open(path).ok()?;
-                let _ = archive_file.seek(SeekFrom::Start(entry.entry_offset as _));
+                let _ = archive_file.seek(SeekFrom::Start(entry.entry_offset.into()));
                 archive_file
             };
 
@@ -174,15 +177,15 @@ impl PakReader for VPKVersion1 {
         let mut digest = crc.digest();
         digest.update(&buf);
 
-        if digest.finalize() != entry.crc {
-            None
-        } else {
+        if digest.finalize() == entry.crc {
             Some(buf)
+        } else {
+            None
         }
     }
 
     fn extract_file(
-        self: &Self,
+        &self,
         archive_path: &String,
         vpk_name: &String,
         file_path: &String,
@@ -200,13 +203,13 @@ impl PakReader for VPKVersion1 {
         let out_path = std::path::Path::new(output_path);
         if let Some(prefix) = out_path.parent() {
             std::fs::create_dir_all(prefix).or(Err("Failed to create parent directories"))?;
-        };
+        }
 
         let mut out_file = File::create(out_path).or(Err("Failed to create output file"))?;
 
         // Set the length of the file
         out_file
-            .set_len(entry.entry_length as _)
+            .set_len(entry.entry_length.into())
             .or(Err("Failed to set length of output file"))?;
 
         if entry.preload_length > 0 {
@@ -217,21 +220,21 @@ impl PakReader for VPKVersion1 {
                 .ok_or("Preload data not found in VPK")?;
 
             out_file
-                .write_all(&chunk)
+                .write_all(chunk)
                 .or(Err("Failed to write to output file"))?;
 
-            digest.update(&chunk);
+            digest.update(chunk);
         }
 
         if entry.entry_length > 0 {
             let mut archive_file = if entry.archive_index == 0xFF7F {
-                let path = Path::new(archive_path).join(format!("{}_dir.vpk", vpk_name));
+                let path = Path::new(archive_path).join(format!("{vpk_name}_dir.vpk"));
 
                 let mut archive_file = File::open(path).or(Err("Failed to open archive file"))?;
                 let _ = archive_file.seek(SeekFrom::Start(
                     mem::size_of::<VPKHeaderV1>() as u64
-                        + self.header.tree_size as u64
-                        + entry.entry_offset as u64,
+                        + u64::from(self.header.tree_size)
+                        + u64::from(entry.entry_offset),
                 ));
                 archive_file
             } else {
@@ -242,7 +245,7 @@ impl PakReader for VPKVersion1 {
                 ));
 
                 let mut archive_file = File::open(path).or(Err("Failed to open archive file"))?;
-                let _ = archive_file.seek(SeekFrom::Start(entry.entry_offset as _));
+                let _ = archive_file.seek(SeekFrom::Start(entry.entry_offset.into()));
                 archive_file
             };
 
@@ -252,7 +255,7 @@ impl PakReader for VPKVersion1 {
                 let chunk = archive_file
                     .read_bytes(min(1024 * 1024, remaining))
                     .or(Err("Failed to read from archive file"))?;
-                if chunk.len() == 0 {
+                if chunk.is_empty() {
                     return Err("Failed to read from archive file".to_string());
                 }
                 out_file
@@ -269,16 +272,16 @@ impl PakReader for VPKVersion1 {
             }
         }
 
-        if digest.finalize() != entry.crc {
-            Err("CRC must match".to_string())
-        } else {
+        if digest.finalize() == entry.crc {
             Ok(())
+        } else {
+            Err("CRC must match".to_string())
         }
     }
 
     #[cfg(feature = "mem-map")]
     fn extract_file_mem_map(
-        self: &Self,
+        &self,
         _archive_path: &String,
         archive_mmaps: &HashMap<u16, FileBuffer>,
         _vpk_name: &String,
@@ -303,7 +306,7 @@ impl PakReader for VPKVersion1 {
 
         // Set the length of the file
         out_file
-            .set_len(entry.entry_length as _)
+            .set_len(entry.entry_length.into())
             .or(Err("Failed to set length of output file"))?;
 
         if entry.preload_length > 0 {
@@ -314,10 +317,10 @@ impl PakReader for VPKVersion1 {
                 .ok_or("Preload data not found in VPK")?;
 
             out_file
-                .write_all(&chunk)
+                .write_all(chunk)
                 .or(Err("Failed to write to output file"))?;
 
-            digest.update(&chunk);
+            digest.update(chunk);
         }
 
         if entry.entry_length > 0 {
@@ -330,7 +333,7 @@ impl PakReader for VPKVersion1 {
             let mut i = entry.entry_offset as usize;
             while remaining > 0 {
                 let chunk = &archive_file[i..(i + min(1024 * 1024, remaining))];
-                if chunk.len() == 0 {
+                if chunk.is_empty() {
                     return Err("Failed to read from archive file".to_string());
                 }
                 out_file
@@ -349,16 +352,16 @@ impl PakReader for VPKVersion1 {
             }
         }
 
-        if digest.finalize() != entry.crc {
-            Err("CRC must match".to_string())
-        } else {
+        if digest.finalize() == entry.crc {
             Ok(())
+        } else {
+            Err("CRC must match".to_string())
         }
     }
 }
 
 impl PakWriter for VPKVersion1 {
-    fn write_dir(self: &Self, output_path: &String) -> Result<(), String> {
+    fn write_dir(&self, output_path: &String) -> Result<(), String> {
         let out_path = std::path::Path::new(output_path);
         if let Some(prefix) = out_path.parent() {
             std::fs::create_dir_all(prefix).or(Err("Failed to create parent directories"))?;

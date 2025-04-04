@@ -6,7 +6,7 @@ use crate::{
     pak::v1::format::VPKVersion1,
 };
 use std::{
-    fs::{remove_dir, remove_file, File},
+    fs::{File, remove_dir, remove_file},
     io::Seek,
     path::Path,
 };
@@ -53,7 +53,7 @@ fn read_single_file_vpk_v1() {
     assert_eq!(
         vpk.tree.files.get("test/file.txt"),
         Some(&VPKDirectoryEntry {
-            crc: 0x4570FA16,
+            crc: 0x4570_FA16,
             preload_length: 0,
             archive_index: 0,
             entry_length: 9,
@@ -108,7 +108,7 @@ fn read_single_file_eof_data_vpk_v1() {
     assert_eq!(
         vpk.tree.files.get("test/file.txt"),
         Some(&VPKDirectoryEntry {
-            crc: 0x4570FA16,
+            crc: 0x4570_FA16,
             preload_length: 0,
             archive_index: 0xFF7F,
             entry_length: 9,

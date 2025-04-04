@@ -3,7 +3,7 @@ use crate::common::{file::VPKFileReader, format::PakReader};
 use crate::pak::revpk::format::{VPKDirectoryEntryRespawn, VPKFilePartEntryRespawn, VPKRespawn};
 
 use std::{
-    fs::{remove_dir, remove_file, File},
+    fs::{File, remove_dir, remove_file},
     io::Seek,
     path::Path,
 };
@@ -27,7 +27,7 @@ fn read_single_file_vpk_revpk() {
     assert_eq!(vpk.tree.files.len(), 1, "VPK tree should have 1 entry");
 
     let mut dir_entry = VPKDirectoryEntryRespawn {
-        crc: 0x4570FA16,
+        crc: 0x4570_FA16,
         preload_length: 0,
         file_parts: Vec::new(),
     };
@@ -157,21 +157,21 @@ fn revpk_read_cam() {
     assert_eq!(cam.entries.len(), 17852, "Should have 17852 entries");
 
     assert_eq!(
-        cam.find_entry(10688756183),
+        cam.find_entry(10_688_756_183),
         Some(&VPKRespawnCamEntry {
-            magic: 3302889984,
-            original_size: 315436,
+            magic: 3_302_889_984,
+            original_size: 315_436,
             compressed_size: 29547,
             sample_rate: 44100,
             channels: 1,
-            sample_count: 157658,
+            sample_count: 157_658,
             header_size: 44,
-            vpk_content_offset: 10688756183,
+            vpk_content_offset: 10_688_756_183,
         }),
         "Entry with vpk content offset 10688756183 should exist",
     );
 
-    let wav_header = create_wav_header(cam.find_entry(10688756183).unwrap());
+    let wav_header = create_wav_header(cam.find_entry(10_688_756_183).unwrap());
 
     assert_eq!(
         wav_header,
@@ -203,21 +203,21 @@ fn revpk_read_cam_for_vpk() {
     assert_eq!(cam.entries.len(), 17852, "Should have 17852 entries");
 
     assert_eq!(
-        cam.find_entry(10688756183),
+        cam.find_entry(10_688_756_183),
         Some(&VPKRespawnCamEntry {
-            magic: 3302889984,
-            original_size: 315436,
+            magic: 3_302_889_984,
+            original_size: 315_436,
             compressed_size: 29547,
             sample_rate: 44100,
             channels: 1,
-            sample_count: 157658,
+            sample_count: 157_658,
             header_size: 44,
-            vpk_content_offset: 10688756183,
+            vpk_content_offset: 10_688_756_183,
         }),
         "Entry with vpk content offset 10688756183 should exist",
     );
 
-    let wav_header = create_wav_header(cam.find_entry(10688756183).unwrap());
+    let wav_header = create_wav_header(cam.find_entry(10_688_756_183).unwrap());
 
     assert_eq!(
         wav_header,
