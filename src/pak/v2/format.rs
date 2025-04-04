@@ -40,6 +40,30 @@ pub struct VPKHeaderV2 {
     pub signature_section_size: u32,
 }
 
+#[repr(C)]
+pub struct VPKArchiveMD5SectionEntry {
+    pub archive_index: u32,
+    pub starting_offset: u32,   // where to start reading bytes
+    pub count: u32,             // how many bytes to check
+    pub md5_checksum: [u8; 16], // expected checksum. len: 16
+}
+
+#[repr(C)]
+pub struct VPKOtherMD5Section {
+    pub tree_checksum: [u8; 16],
+    pub archive_md5_section_checksum: [u8; 16],
+    pub unknown: [u8; 16],
+}
+
+#[repr(C)]
+pub struct VPKSignatureSection {
+    pub public_key_size: u32, // always seen as 160 (0xA0) bytes
+    pub public_key: [u8; 160],
+
+    pub signature_size: u32, // always seen as 128 (0x80) bytes
+    pub signature: [u8; 128],
+}
+
 impl VPKHeaderV2 {
     /// Read the header from a file.
     pub fn from(file: &mut File) -> Result<Self, String> {
@@ -75,7 +99,7 @@ impl VPKHeaderV2 {
         ))?;
 
         // Check the archive md5 section size
-        if archive_md5_section_size % 28 != 0 {
+        if archive_md5_section_size as usize % size_of::<VPKArchiveMD5SectionEntry>() != 0 {
             return Err(
                 "VPK header archive MD5 section size should be a multiple of 28".to_string(),
             );
@@ -86,7 +110,7 @@ impl VPKHeaderV2 {
         ))?;
 
         // Check the other section size
-        if other_md5_section_size != 48 {
+        if other_md5_section_size as usize != size_of::<VPKOtherMD5Section>() {
             return Err("VPK header other MD5 section size should be 48".to_string());
         }
 
@@ -94,7 +118,9 @@ impl VPKHeaderV2 {
             "Could not read header signature section size from file",
         ))?;
 
-        if signature_section_size != 0 && signature_section_size != 296 {
+        if signature_section_size != 0
+            && signature_section_size as usize != size_of::<VPKSignatureSection>()
+        {
             return Err("VPK header signature section size should be 0 or 296".to_string());
         }
 
@@ -122,18 +148,6 @@ impl VPKHeaderV2 {
     }
 }
 
-pub struct VPKArchiveMD5SectionEntry {
-    pub archive_index: u32,
-    pub starting_offset: u32,  // where to start reading bytes
-    pub count: u32,            // how many bytes to check
-    pub md5_checksum: Vec<u8>, // expected checksum. len: 16
-}
-
-pub struct VPKOtherMD5Section {
-    pub tree_checksum: Vec<u8>,                // len: 16
-    pub archive_md5_section_checksum: Vec<u8>, // len: 16
-    pub unknown: Vec<u8>,                      // len: 16
-}
 impl Default for VPKOtherMD5Section {
     fn default() -> Self {
         Self::new()
@@ -144,19 +158,11 @@ impl VPKOtherMD5Section {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            tree_checksum: vec![0; 16],
-            archive_md5_section_checksum: vec![0; 16],
-            unknown: vec![0; 16],
+            tree_checksum: [0; 16],
+            archive_md5_section_checksum: [0; 16],
+            unknown: [0; 16],
         }
     }
-}
-
-pub struct VPKSignatureSection {
-    pub public_key_size: u32, // always seen as 160 (0xA0) bytes
-    pub public_key: Vec<u8>,
-
-    pub signature_size: u32, // always seen as 128 (0x80) bytes
-    pub signature: Vec<u8>,
 }
 
 /// The VPK version 2 format.
@@ -219,20 +225,32 @@ impl PakReader for VPKVersion2 {
                     .or(Err("Failed reading archive MD5 section count"))?,
                 md5_checksum: file
                     .read_bytes(16)
-                    .or(Err("Failed reading archive MD5 section count"))?,
+                    .or(Err("Failed reading archive MD5 section count"))?
+                    .try_into()
+                    .or(Err("Vec length must be 16"))?,
             });
         }
 
         let other_md5_section = VPKOtherMD5Section {
             tree_checksum: file
                 .read_bytes(16)
-                .or(Err("Failed reading other MD5 section tree checksum"))?,
-            archive_md5_section_checksum: file.read_bytes(16).or(Err(
-                "Failed reading other MD5 section archive MD5 section checksum",
-            ))?,
+                .or(Err("Failed reading other MD5 section tree checksum"))?
+                .try_into()
+                .or(Err("Vec length must be 16"))?,
+
+            archive_md5_section_checksum: file
+                .read_bytes(16)
+                .or(Err(
+                    "Failed reading other MD5 section archive MD5 section checksum",
+                ))?
+                .try_into()
+                .or(Err("Vec length must be 16"))?,
+
             unknown: file
                 .read_bytes(16)
-                .or(Err("Failed reading other MD5 section unknown"))?,
+                .or(Err("Failed reading other MD5 section unknown"))?
+                .try_into()
+                .or(Err("Vec length must be 16"))?,
         };
 
         let signature_section = if header.signature_section_size == 296 {
@@ -252,9 +270,9 @@ impl PakReader for VPKVersion2 {
 
             Some(VPKSignatureSection {
                 public_key_size,
-                public_key,
+                public_key: public_key.try_into().expect("Public key must be 160 bytes"),
                 signature_size,
-                signature,
+                signature: signature.try_into().expect("Signature must be 128 bytes"),
             })
         } else {
             let _ = file.seek(std::io::SeekFrom::Current(
