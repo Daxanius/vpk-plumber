@@ -1,6 +1,5 @@
 use crate::{
-    pak::v1::VPKVersion1,
-    pak::{Error, PakReader, PakWriter, VPKDirectoryEntry},
+    pak::{Error, PakReader, PakWriter, VPKDirectoryEntry, v1::VPKVersion1},
     util::file::VPKFileReader,
 };
 use std::{
@@ -13,23 +12,6 @@ use std::{
 use filebuffer::FileBuffer;
 #[cfg(feature = "mem-map")]
 use std::collections::HashMap;
-
-#[test]
-fn read_empty_vpk_v1() {
-    let path = Path::new("./test_files/empty_v1_dir.vpk");
-    let mut file = File::open(path).expect("Failed to open file");
-    let vpk = VPKVersion1::try_from(&mut file).expect("Failed to read VPK file");
-    assert_eq!(vpk.tree.files.len(), 0, "VPK tree should have 0 entries");
-    assert_eq!(
-        vpk.tree.files.get("test/file.txt"),
-        None,
-        "File \"test/file.txt\" shouldn't exist"
-    );
-    assert!(
-        file.stream_position().unwrap() >= file.seek(std::io::SeekFrom::End(0)).unwrap() - 1,
-        "Should be at end of file"
-    );
-}
 
 #[test]
 fn read_invalid_vpk_v1() {
@@ -235,5 +217,22 @@ fn write_parity_vpk_v1() {
     assert!(
         new_vpk == vpk,
         "Written VPK did not contain the same data as the original"
+    );
+}
+
+#[test]
+fn read_empty_vpk_v1() {
+    let path = Path::new("./test_files/empty_v1_dir.vpk");
+    let mut file = File::open(path).expect("Failed to open file");
+    let vpk = VPKVersion1::try_from(&mut file).expect("Failed to read VPK file");
+    assert_eq!(vpk.tree.files.len(), 0, "VPK tree should have 0 entries");
+    assert_eq!(
+        vpk.tree.files.get("test/file.txt"),
+        None,
+        "File \"test/file.txt\" shouldn't exist"
+    );
+    assert!(
+        file.stream_position().unwrap() >= file.seek(std::io::SeekFrom::End(0)).unwrap() - 1,
+        "Should be at end of file"
     );
 }
