@@ -15,6 +15,7 @@ use lzham_alpha_sys::{
 
 const TFLZHAM_DICT_SIZE: u32 = 20; // required for compatibility
 
+#[allow(dead_code)]
 const TFLZHAM_COMPRESS_PARAMS: lzham_compress_params = lzham_compress_params {
     m_struct_size: size_of::<lzham_compress_params>() as _,
     m_dict_size_log2: TFLZHAM_DICT_SIZE,
@@ -36,6 +37,8 @@ const TFLZHAM_DECOMPRESS_PARAMS: lzham_decompress_params = lzham_decompress_para
     m_pSeed_bytes: null(),
 };
 
+#[allow(dead_code)]
+#[must_use]
 pub fn compress(src: &mut [u8]) -> Vec<u8> {
     let mut dst = vec![0; src.len()];
     let mut dst_len = 0;

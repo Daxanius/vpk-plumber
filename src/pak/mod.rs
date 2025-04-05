@@ -26,11 +26,17 @@ pub const VPK_ENTRY_TERMINATOR: u16 = 0xFFFF;
 /// Trait for common methods on the various directory entry formats used in versions of VPK files.
 pub trait DirEntry {
     /// Reads a directory entry from a file.
+    /// # Errors
+    /// - When an IO operation fails
+    /// - When the file contains invalid data
     fn from(file: &mut File) -> Result<Self>
     where
         Self: Sized;
 
     /// Write the directory entry to a file.
+    /// # Errors
+    /// When an IO operation fails
+    /// When the data is invalid
     fn write(&self, file: &mut File) -> Result<()>;
 
     /// Returns the number of bytes of preload data for an entry, this is 0 if all the data is stored in archives.
@@ -136,7 +142,13 @@ where
         Ok(tree)
     }
 
+    /// Write q file
+    /// # Panics
+    /// - Should never panic, if it does, contact the crate author
+    /// # Errors
+    /// - When an IO operation fails
     pub fn write(&self, file: &mut File) -> Result<()> {
+        #[allow(clippy::type_complexity)]
         let mut treeified: HashMap<
             String,
             HashMap<String, Vec<(String, &DirectoryEntry, Option<&Vec<u8>>)>>,

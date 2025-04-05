@@ -33,6 +33,7 @@ pub trait VPKFileReader {
     fn read_bytes(&mut self, count: usize) -> Result<Vec<u8>>;
 }
 
+#[allow(dead_code)]
 impl VPKFileReader for File {
     fn read_u8(&mut self) -> Result<u8> {
         let mut b: [u8; 1] = [0];
@@ -99,6 +100,7 @@ impl VPKFileReader for File {
 /// Trait for writing data to binary files.
 ///
 /// Always uses little-endian byte order. Moves cursor forward after writing.
+#[allow(dead_code)]
 pub trait VPKFileWriter {
     /// Writes a single byte to the file from a [`u8`].
     fn write_u8(&mut self, val: u8) -> Result<()>;
@@ -122,6 +124,7 @@ pub trait VPKFileWriter {
     fn write_bytes(&mut self, bytes: &[u8]) -> Result<()>;
 }
 
+#[allow(dead_code)]
 impl VPKFileWriter for File {
     fn write_u8(&mut self, val: u8) -> Result<()> {
         let b = u8::to_le_bytes(val);
