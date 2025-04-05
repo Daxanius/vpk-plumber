@@ -40,7 +40,7 @@ pub fn detect_pak_format(file: &mut File) -> PakFormat {
 }
 
 /// Detects the correct VPK format to use and returns
-/// the appropriate PakWorker to work with the format.
+/// the appropriate `PakWorker` to work with the format.
 /// # Errors
 /// - When the format is unknown
 /// - When the file data is invalid
