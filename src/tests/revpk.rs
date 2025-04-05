@@ -1,6 +1,6 @@
-use crate::common::file::VPKFileReader;
-use crate::common::format::{PakReader, PakWorker, PakWriter};
-use crate::pak::revpk::format::{VPKDirectoryEntryRespawn, VPKFilePartEntryRespawn, VPKRespawn};
+use crate::pak::revpk::{VPKDirectoryEntryRespawn, VPKFilePartEntryRespawn, VPKRespawn};
+use crate::pak::{PakReader, PakWorker, PakWriter};
+use crate::util::file::VPKFileReader;
 
 use std::{
     fs::{File, remove_dir, remove_file},
@@ -8,10 +8,7 @@ use std::{
     path::Path,
 };
 
-use crate::pak::revpk::{
-    cam::create_wav_header,
-    format::{VPKRespawnCam, VPKRespawnCamEntry},
-};
+use crate::pak::revpk::{VPKRespawnCam, VPKRespawnCamEntry, create_wav_header};
 
 #[cfg(feature = "mem-map")]
 use filebuffer::FileBuffer;

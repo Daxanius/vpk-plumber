@@ -1,4 +1,4 @@
-use crate::pak::v2::format::VPKVersion2;
+use crate::pak::v2::VPKVersion2;
 use std::{fs::File, io::Seek, path::Path};
 
 #[test]

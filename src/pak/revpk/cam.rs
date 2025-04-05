@@ -59,18 +59,14 @@ pub fn create_wav_header(cam_entry: &VPKRespawnCamEntry) -> Vec<u8> {
     header.to_vec()
 }
 
-pub fn seek_to_wav_data(file: &mut File) -> Result<u64, String> {
-    let pos = file
-        .seek(SeekFrom::Current(44))
-        .or(Err("Failed to seek in file"))?;
+pub fn seek_to_wav_data(file: &mut File) -> Result<u64, std::io::Error> {
+    let pos = file.seek(SeekFrom::Current(44))?;
     loop {
         let mut b: [u8; 1] = [0];
         let _ = file.read(&mut b);
 
         if b[0] != 0xCB {
-            let res = file
-                .seek(SeekFrom::Current(-1))
-                .or(Err("Failed to seek in file"))?;
+            let res = file.seek(SeekFrom::Current(-1))?;
             return Ok(44 + res - pos);
         }
     }

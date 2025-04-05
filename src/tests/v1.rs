@@ -1,9 +1,7 @@
 use crate::{
-    common::{
-        file::VPKFileReader,
-        format::{PakReader, PakWriter, VPKDirectoryEntry},
-    },
-    pak::v1::format::VPKVersion1,
+    pak::v1::VPKVersion1,
+    pak::{Error, PakReader, PakWriter, VPKDirectoryEntry},
+    util::file::VPKFileReader,
 };
 use std::{
     fs::{File, remove_dir, remove_file},
@@ -39,7 +37,7 @@ fn read_invalid_vpk_v1() {
     let mut file = File::open(path).expect("Failed to open file");
     let vpk = VPKVersion1::try_from(&mut file);
     assert!(
-        vpk.is_err_and(|x| x.contains("VPK header signature should be 0x55aa1234")),
+        vpk.is_err_and(|x| matches!(x, Error::InvalidSignature(_))),
         "VPK file should be invalid",
     );
 }

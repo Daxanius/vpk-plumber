@@ -1,11 +1,8 @@
 //! Support for the VPK version 1 format.
 
+use super::{Error, PakReader, PakWorker, PakWriter, Result, VPKDirectoryEntry, VPKTree};
+use crate::util::file::VPKFileReader;
 use std::{fs::File, io::Seek};
-
-use crate::common::{
-    file::VPKFileReader,
-    format::{PakReader, PakWorker, PakWriter, VPKDirectoryEntry, VPKTree},
-};
 
 #[cfg(feature = "mem-map")]
 use filebuffer::FileBuffer;
@@ -14,6 +11,7 @@ use std::collections::HashMap;
 
 /// The 4-byte signature found in the header of a valid VPK version 2 file.
 pub const VPK_SIGNATURE_V2: u32 = 0x55AA_1234;
+
 /// The 4-byte version found in the header of a valid VPK version 2 file.
 pub const VPK_VERSION_V2: u32 = 2;
 
@@ -21,6 +19,7 @@ pub const VPK_VERSION_V2: u32 = 2;
 pub struct VPKHeaderV2 {
     /// VPK signature. Should be equal to [`VPK_SIGNATURE_V2`].
     pub signature: u32,
+
     /// VPK version. Should be equal to [`VPK_VERSION_V2`].
     pub version: u32,
 
@@ -66,62 +65,76 @@ pub struct VPKSignatureSection {
 
 impl VPKHeaderV2 {
     /// Read the header from a file.
-    pub fn from(file: &mut File) -> Result<Self, String> {
-        let signature = file
-            .read_u32()
-            .or(Err("Could not read header signature from file"))?;
+    pub fn from(file: &mut File) -> Result<Self> {
+        let signature = file.read_u32().map_err(|e| Error::Util {
+            source: e,
+            context: "Failed to read signature".to_string(),
+        })?;
 
         // Check the signature before moving on
         if signature != VPK_SIGNATURE_V2 {
-            return Err(format!(
-                "VPK header signature should be {VPK_SIGNATURE_V2:#x}"
-            ));
+            return Err(Error::InvalidSignature(format!(
+                "Header signature should be {VPK_SIGNATURE_V2:#X} but is {signature:#X}"
+            )));
         }
 
-        let version = file
-            .read_u32()
-            .or(Err("Could not read header version from file"))?;
+        let version = file.read_u32().map_err(|e| Error::Util {
+            source: e,
+            context: "Failed to read version".to_string(),
+        })?;
 
         // Check the version before moving on
         if version != VPK_VERSION_V2 {
-            return Err(format!("VPK header version should be {VPK_VERSION_V2}"));
+            return Err(Error::BadVersion(format!(
+                "Header version should be {VPK_VERSION_V2} but is {version}"
+            )));
         }
 
-        let tree_size = file
-            .read_u32()
-            .or(Err("Could not read header tree size from file"))?;
-        let file_data_section_size = file.read_u32().or(Err(
-            "Could not read header file data section size from file",
-        ))?;
+        let tree_size = file.read_u32().map_err(|e| Error::Util {
+            source: e,
+            context: "Failed to read tree size".to_string(),
+        })?;
 
-        let archive_md5_section_size = file.read_u32().or(Err(
-            "Could not read header archive MD5 section size from file",
-        ))?;
+        let file_data_section_size = file.read_u32().map_err(|e| Error::Util {
+            source: e,
+            context: "Failed to read file data section size".to_string(),
+        })?;
+
+        let archive_md5_section_size = file.read_u32().map_err(|e| Error::Util {
+            source: e,
+            context: "Failed to read MD5 section size".to_string(),
+        })?;
 
         // Check the archive md5 section size
         if archive_md5_section_size as usize % size_of::<VPKArchiveMD5SectionEntry>() != 0 {
-            return Err(
-                "VPK header archive MD5 section size should be a multiple of 28".to_string(),
-            );
+            return Err(Error::BadData(format!(
+                "Header archive MD5 section size should be a multiple of 28 but is {archive_md5_section_size}"
+            )));
         }
 
-        let other_md5_section_size = file.read_u32().or(Err(
-            "Could not read header other MD5 section size from file",
-        ))?;
+        let other_md5_section_size = file.read_u32().map_err(|e| Error::Util {
+            source: e,
+            context: "Failed to read other MD5 section size".to_string(),
+        })?;
 
         // Check the other section size
         if other_md5_section_size as usize != size_of::<VPKOtherMD5Section>() {
-            return Err("VPK header other MD5 section size should be 48".to_string());
+            return Err(Error::BadData(format!(
+                "Header archive MD5 section size should be 48 but is {other_md5_section_size}"
+            )));
         }
 
-        let signature_section_size = file.read_u32().or(Err(
-            "Could not read header signature section size from file",
-        ))?;
+        let signature_section_size = file.read_u32().map_err(|e| Error::Util {
+            source: e,
+            context: "Failed to read signature size".to_string(),
+        })?;
 
         if signature_section_size != 0
             && signature_section_size as usize != size_of::<VPKSignatureSection>()
         {
-            return Err("VPK header signature section size should be 0 or 296".to_string());
+            return Err(Error::BadData(format!(
+                "Header signature section size should be 0 or 296 but is {signature_section_size}"
+            )));
         }
 
         Ok(Self {
@@ -169,14 +182,19 @@ impl VPKOtherMD5Section {
 pub struct VPKVersion2 {
     /// The VPK's header.
     pub header: VPKHeaderV2,
+
     /// The tree of files in the VPK.
     pub tree: VPKTree<VPKDirectoryEntry>,
+
     /// The file data section of the VPK.
     pub file_data: Vec<u8>,
+
     /// The archive md5 section of the VPK.
     pub archive_md5_section_entries: Vec<VPKArchiveMD5SectionEntry>,
+
     /// The other md5 section of the VPK.
     pub other_md5_section: VPKOtherMD5Section,
+
     /// The signature section of the VPK.
     pub signature_section: Option<VPKSignatureSection>,
 }
@@ -197,7 +215,7 @@ impl PakReader for VPKVersion2 {
         _vpk_name: &String,
         _file_path: &String,
         _output_path: &String,
-    ) -> Result<(), String> {
+    ) -> Result<()> {
         todo!()
     }
 
@@ -209,13 +227,13 @@ impl PakReader for VPKVersion2 {
         _vpk_name: &String,
         _file_path: &String,
         _output_path: &String,
-    ) -> Result<(), String> {
+    ) -> Result<()> {
         todo!()
     }
 }
 
 impl PakWriter for VPKVersion2 {
-    fn write_dir(&self, _out_path: &String) -> Result<(), String> {
+    fn write_dir(&self, _out_path: &String) -> Result<()> {
         todo!()
     }
 }
@@ -240,7 +258,7 @@ impl PakWorker for VPKVersion2 {
         }
     }
 
-    fn from_file(file: &mut File) -> Result<Self, String> {
+    fn from_file(file: &mut File) -> Result<Self> {
         let header = VPKHeaderV2::from(file)?;
 
         let tree_start = file.stream_position().unwrap();
@@ -248,64 +266,93 @@ impl PakWorker for VPKVersion2 {
 
         let file_data = file
             .read_bytes(header.file_data_section_size as _)
-            .or(Err("Failed reading file data section"))?;
+            .map_err(|e| Error::Util {
+                source: e,
+                context: "Failed to read file data section".to_string(),
+            })?;
 
         let mut archive_md5_section_entries = Vec::new();
         while archive_md5_section_entries.len() < (header.archive_md5_section_size / 28) as _ {
             archive_md5_section_entries.push(VPKArchiveMD5SectionEntry {
-                archive_index: file
-                    .read_u32()
-                    .or(Err("Failed reading archive MD5 section archive index"))?,
-                starting_offset: file
-                    .read_u32()
-                    .or(Err("Failed reading archive MD5 section starting offset"))?,
-                count: file
-                    .read_u32()
-                    .or(Err("Failed reading archive MD5 section count"))?,
+                archive_index: file.read_u32().map_err(|e| Error::Util {
+                    source: e,
+                    context: "Failed to read archive md5 section archive index".to_string(),
+                })?,
+
+                starting_offset: file.read_u32().map_err(|e| Error::Util {
+                    source: e,
+                    context: "Failed to read archive md5 section offset".to_string(),
+                })?,
+
+                count: file.read_u32().map_err(|e| Error::Util {
+                    source: e,
+                    context: "Failed to read archive md5 section count".to_string(),
+                })?,
+
                 md5_checksum: file
                     .read_bytes(16)
-                    .or(Err("Failed reading archive MD5 section count"))?
+                    .map_err(|e| Error::Util {
+                        source: e,
+                        context: "Failed to read archive md5 section signature".to_string(),
+                    })?
                     .try_into()
-                    .or(Err("Vec length must be 16"))?,
+                    .expect("Bytes read should match parameter value"),
             });
         }
 
         let other_md5_section = VPKOtherMD5Section {
             tree_checksum: file
                 .read_bytes(16)
-                .or(Err("Failed reading other MD5 section tree checksum"))?
+                .map_err(|e| Error::Util {
+                    source: e,
+                    context: "Failed to read other md5 section tree checksum".to_string(),
+                })?
                 .try_into()
-                .or(Err("Vec length must be 16"))?,
+                .expect("Bytes read should match parameter value"),
 
             archive_md5_section_checksum: file
                 .read_bytes(16)
-                .or(Err(
-                    "Failed reading other MD5 section archive MD5 section checksum",
-                ))?
+                .map_err(|e| Error::Util {
+                    source: e,
+                    context: "Failed to read other md5 section checksum".to_string(),
+                })?
                 .try_into()
-                .or(Err("Vec length must be 16"))?,
+                .expect("Bytes read should match parameter value"),
 
             unknown: file
                 .read_bytes(16)
-                .or(Err("Failed reading other MD5 section unknown"))?
+                .map_err(|e| Error::Util {
+                    source: e,
+                    context: "Failed to read other md5 section unknown".to_string(),
+                })?
                 .try_into()
-                .or(Err("Vec length must be 16"))?,
+                .expect("Bytes read should match parameter value"),
         };
 
         let signature_section = if header.signature_section_size == 296 {
-            let public_key_size = file
-                .read_u32()
-                .or(Err("Failed reading signature section public key size"))?;
+            let public_key_size = file.read_u32().map_err(|e| Error::Util {
+                source: e,
+                context: "Failed reading signature public key size".to_string(),
+            })?;
+
             let public_key = file
                 .read_bytes(public_key_size as _)
-                .or(Err("Failed reading signature section public key"))?;
+                .map_err(|e| Error::Util {
+                    source: e,
+                    context: "Failed to read signature public key".to_string(),
+                })?;
 
-            let signature_size = file
-                .read_u32()
-                .or(Err("Failed reading signature section signature size"))?;
+            let signature_size = file.read_u32().map_err(|e| Error::Util {
+                source: e,
+                context: "Failed to read signature size".to_string(),
+            })?;
+
             let signature = file
                 .read_bytes(signature_size as _)
-                .or(Err("Failed reading signature section signature"))?;
+                .map_err(|e| Error::Util {
+                    source: e,
+                    context: "Failed to read signature".to_string(),
+                })?;
 
             Some(VPKSignatureSection {
                 public_key_size,
@@ -332,9 +379,9 @@ impl PakWorker for VPKVersion2 {
 }
 
 impl TryFrom<&mut File> for VPKVersion2 {
-    fn try_from(file: &mut File) -> Result<Self, String> {
+    fn try_from(file: &mut File) -> Result<Self> {
         Self::from_file(file)
     }
 
-    type Error = String;
+    type Error = Error;
 }
