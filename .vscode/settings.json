@@ -7,5 +7,22 @@
         "detect",
         "revpk",
         "mem-map"
+    ],
+    "cSpell.words": [
+        "clippy",
+        "cpucache",
+        "DECOMP",
+        "docsrs",
+        "Dota",
+        "HDLC",
+        "lzham",
+        "mmaps",
+        "repr",
+        "Respawn",
+        "revpk",
+        "rustdoc",
+        "sourcepak",
+        "TFLZHAM",
+        "Titanfall"
     ]
 }

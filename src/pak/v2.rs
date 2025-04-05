@@ -35,7 +35,7 @@ pub struct VPKHeaderV2 {
     /// The size, in bytes, of the section containing MD5 checksums for content in this file (should always be 48)
     pub other_md5_section_size: u32,
 
-    /// The size, in bytes, of the section containing the public key and signature. This is either 0 (CSGO & The Ship) or 296 (HL2, HL2:DM, HL2:EP1, HL2:EP2, HL2:LC, TF2, DOD:S & CS:S)
+    /// The size, in bytes, of the section containing the public key and signature. This is either 0 (CS:GO & The Ship) or 296 (HL2, HL2:DM, HL2:EP1, HL2:EP2, HL2:LC, TF2, DOD:S & CS:S)
     pub signature_section_size: u32,
 }
 
