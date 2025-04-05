@@ -70,13 +70,17 @@ where
         }
     }
 
+    /// Reads from a file
+    /// # Errors
+    /// - When the data is invalid
+    /// - When IO operations fail
     pub fn from(file: &mut File, start: u64, size: u64) -> Result<Self> {
         file.seek(SeekFrom::Start(start))
             .map_err(Error::TreeNotFound)?;
 
         let mut tree = Self::new();
 
-        while file.stream_position().unwrap() < start + size {
+        while file.stream_position().map_err(Error::Io)? < start + size {
             let extension = file.read_string().map_err(|e| Error::Util {
                 source: e,
                 context: "Failed to read extension".to_string(),
@@ -92,7 +96,7 @@ where
                     context: "Failed to path".to_string(),
                 })?;
 
-                if path.is_empty() || file.stream_position().unwrap() > start + size {
+                if path.is_empty() || file.stream_position().map_err(Error::Io)? > start + size {
                     break;
                 }
 
@@ -102,7 +106,9 @@ where
                         context: "Failed to read file name".to_string(),
                     })?;
 
-                    if file_name.is_empty() || file.stream_position().unwrap() > start + size {
+                    if file_name.is_empty()
+                        || file.stream_position().map_err(Error::Io)? > start + size
+                    {
                         break;
                     }
 
@@ -399,7 +405,7 @@ pub trait PakReader {
 pub trait PakWriter {
     /// Write the dir.vpk file for this VPK to disk with a given path.
     /// Does not modify or create archives if the any [`VPKDirectoryEntry`] has changed.
-    fn write_dir(&self, output_path: &String) -> Result<()>;
+    fn write_dir(&self, output_path: &str) -> Result<()>;
 }
 
 pub trait PakWorker: PakReader + PakWriter {

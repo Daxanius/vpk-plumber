@@ -65,6 +65,10 @@ pub struct VPKSignatureSection {
 
 impl VPKHeaderV2 {
     /// Read the header from a file.
+    /// # Errors
+    /// - When the data is invalid
+    /// - When the signature is invalid
+    /// - When the version does not match
     pub fn from(file: &mut File) -> Result<Self> {
         let signature = file.read_u32().map_err(|e| Error::Util {
             source: e,
@@ -149,8 +153,12 @@ impl VPKHeaderV2 {
     }
 
     /// Check if a file is in the VPK version 2 format.
+    /// # Panics
+    /// - When `stream_position` fails
     pub fn is_format(file: &mut File) -> bool {
-        let pos = file.stream_position().unwrap();
+        let Ok(pos) = file.stream_position() else {
+            return false;
+        };
 
         let signature = file.read_u32();
         let version = file.read_u32();
@@ -233,7 +241,7 @@ impl PakReader for VPKVersion2 {
 }
 
 impl PakWriter for VPKVersion2 {
-    fn write_dir(&self, _out_path: &String) -> Result<()> {
+    fn write_dir(&self, _out_path: &str) -> Result<()> {
         todo!()
     }
 }

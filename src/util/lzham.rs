@@ -36,7 +36,7 @@ const TFLZHAM_DECOMPRESS_PARAMS: lzham_decompress_params = lzham_decompress_para
     m_pSeed_bytes: null(),
 };
 
-pub fn compress(src: &mut Vec<u8>) -> Vec<u8> {
+pub fn compress(src: &mut [u8]) -> Vec<u8> {
     let mut dst = vec![0; src.len()];
     let mut dst_len = 0;
 
@@ -58,7 +58,8 @@ pub fn compress(src: &mut Vec<u8>) -> Vec<u8> {
     dst
 }
 
-#[must_use] pub fn decompress(src: &Vec<u8>, dst_len: usize) -> Vec<u8> {
+#[must_use]
+pub fn decompress(src: &[u8], dst_len: usize) -> Vec<u8> {
     let mut dst = vec![0; dst_len];
     let mut dst_len_new = dst_len;
 

@@ -133,7 +133,9 @@ impl VPKHeaderRespawn {
 
     /// Check if a file is in the Respawn VPK format.
     pub fn is_format(file: &mut File) -> bool {
-        let pos = file.stream_position().unwrap();
+        let Ok(pos) = file.stream_position() else {
+            return false;
+        };
 
         let signature = file.read_u32();
         let version = file.read_u32();
@@ -373,7 +375,7 @@ impl VPKRespawnCam {
 
         let _ = file.seek(SeekFrom::Start(0)).map_err(Error::Io)?;
 
-        while file.stream_position().unwrap() < file_len {
+        while file.stream_position().map_err(Error::Io)? < file_len {
             let entry = VPKRespawnCamEntry {
                 magic: file.read_u32().map_err(|e| Error::Util {
                     source: e,
@@ -593,7 +595,7 @@ impl PakReader for VPKRespawn {
                 total_len += entry_len;
 
                 if file_part.entry_length == file_part.entry_length_uncompressed {
-                    let mut part = archive_file.read_bytes(entry_len as _).ok()?;
+                    let mut part = archive_file.read_bytes(entry_len as usize).ok()?;
 
                     // Truncate WAV files that exceed their expected length
                     if expected_len > 0
@@ -968,7 +970,7 @@ impl PakReader for VPKRespawn {
 }
 
 impl PakWriter for VPKRespawn {
-    fn write_dir(&self, output_path: &String) -> Result<()> {
+    fn write_dir(&self, output_path: &str) -> Result<()> {
         let out_path = std::path::Path::new(output_path);
         if let Some(prefix) = out_path.parent() {
             std::fs::create_dir_all(prefix).map_err(Error::Io)?;

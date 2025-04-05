@@ -34,6 +34,10 @@ pub struct VPKHeaderV1 {
 
 impl VPKHeaderV1 {
     /// Read the header from a file.
+    /// # Errors
+    /// - When the data is invalid
+    /// - When the signature is invalid
+    /// - When the version does not match
     pub fn from(file: &mut File) -> Result<Self> {
         let signature = file.read_u32().map_err(|e| Error::Util {
             source: e,
@@ -72,6 +76,10 @@ impl VPKHeaderV1 {
     }
 
     /// Write the header to a file.
+    /// # Errors
+    /// - When the data is invalid
+    /// - When the signature is invalid
+    /// - When the version does not match
     pub fn write(&self, file: &mut File) -> Result<()> {
         if self.signature != VPK_SIGNATURE_V1 {
             return Err(Error::InvalidSignature(format!(
@@ -107,7 +115,9 @@ impl VPKHeaderV1 {
 
     /// Check if a file is in the VPK version 1 format.
     pub fn is_format(file: &mut File) -> bool {
-        let pos = file.stream_position().unwrap();
+        let Ok(pos) = file.stream_position() else {
+            return false;
+        };
 
         let signature = file.read_u32();
         let version = file.read_u32();
@@ -300,7 +310,7 @@ impl PakReader for VPKVersion1 {
         let out_path = std::path::Path::new(output_path);
         if let Some(prefix) = out_path.parent() {
             std::fs::create_dir_all(prefix).map_err(Error::Io)?;
-        };
+        }
 
         let mut out_file = File::create(out_path).map_err(Error::Io)?;
 
@@ -359,11 +369,11 @@ impl PakReader for VPKVersion1 {
 }
 
 impl PakWriter for VPKVersion1 {
-    fn write_dir(&self, output_path: &String) -> Result<()> {
+    fn write_dir(&self, output_path: &str) -> Result<()> {
         let out_path = std::path::Path::new(output_path);
         if let Some(prefix) = out_path.parent() {
             std::fs::create_dir_all(prefix).map_err(Error::Io)?;
-        };
+        }
 
         let mut out_file = File::create(out_path).map_err(Error::Io)?;
 
