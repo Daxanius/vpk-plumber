@@ -3,5 +3,9 @@
         ".\\Cargo.toml"
     ],
     "rust-analyzer.showUnlinkedFileNotification": false,
-    "rust-analyzer.cargo.features": ["respawn", "mem-map"]
+    "rust-analyzer.cargo.features": [
+        "detect",
+        "revpk",
+        "mem-map"
+    ]
 }
