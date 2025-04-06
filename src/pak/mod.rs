@@ -142,7 +142,7 @@ where
         Ok(tree)
     }
 
-    /// Write q file
+    /// Write a file
     /// # Panics
     /// - Should never panic, if it does, contact the crate author
     /// # Errors

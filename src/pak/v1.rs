@@ -21,7 +21,8 @@ pub const VPK_SIGNATURE_V1: u32 = 0x55AA_1234;
 pub const VPK_VERSION_V1: u32 = 1;
 
 /// The header of a VPK version 1 file.
-#[derive(PartialEq, Eq)]
+#[repr(C)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct VPKHeaderV1 {
     /// VPK signature. Should be equal to [`VPK_SIGNATURE_V1`].
     pub signature: u32,

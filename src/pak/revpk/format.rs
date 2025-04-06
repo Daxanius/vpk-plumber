@@ -26,7 +26,7 @@ pub const VPK_VERSION_REVPK: u32 = 196_610;
 pub const RESPAWN_CAM_ENTRY_MAGIC: u32 = 3_302_889_984;
 
 /// The header of a Respawn VPK file.
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct VPKHeaderRespawn {
     /// VPK signature. Should be equal to [`VPK_SIGNATURE_REVPK`].
     pub signature: u32,

@@ -1,7 +1,7 @@
 use std::fmt;
 
 /// Lists the different formats of VPK files.
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum PakFormat {
     /// Unknown format.
     Unknown,

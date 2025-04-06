@@ -16,6 +16,7 @@ pub const VPK_SIGNATURE_V2: u32 = 0x55AA_1234;
 pub const VPK_VERSION_V2: u32 = 2;
 
 /// The header of a VPK version 2 file.
+#[derive(PartialEq, Eq, Debug)]
 pub struct VPKHeaderV2 {
     /// VPK signature. Should be equal to [`VPK_SIGNATURE_V2`].
     pub signature: u32,
@@ -40,6 +41,7 @@ pub struct VPKHeaderV2 {
 }
 
 #[repr(C)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct VPKArchiveMD5SectionEntry {
     pub archive_index: u32,
     pub starting_offset: u32,   // where to start reading bytes
@@ -48,6 +50,7 @@ pub struct VPKArchiveMD5SectionEntry {
 }
 
 #[repr(C)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct VPKOtherMD5Section {
     pub tree_checksum: [u8; 16],
     pub archive_md5_section_checksum: [u8; 16],
@@ -55,6 +58,7 @@ pub struct VPKOtherMD5Section {
 }
 
 #[repr(C)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct VPKSignatureSection {
     pub public_key_size: u32, // always seen as 160 (0xA0) bytes
     pub public_key: [u8; 160],
