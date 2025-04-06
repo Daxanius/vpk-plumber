@@ -13,6 +13,7 @@ pub const SINGLE_FILE_ARCHIVE: &str = "single_file";
 pub const EMPTY_ARCHIVE: &str = "empty";
 
 pub const SINGLE_FILE_NAME: &str = "test/file.txt";
+pub const SINGLE_FILE_CONTENT: &str = "test text";
 
 // Data
 pub const PAK_V1_EMPTY: &str = concatcp!(DIR_V1, "empty_dir.vpk");
@@ -32,3 +33,7 @@ pub const PAK_REVPK_TITANFALL: &str = concatcp!(
     DIR_REVPK,
     "titanfall/englishclient_mp_colony.bsp.pak000_dir.vpk"
 );
+
+pub const PORTAL_TREE_COUNT: usize = 3509;
+pub const PORTAL2_TREE_COUNT: usize = 29657;
+pub const TITANFALL_TREE_COUNT: usize = 5723;
