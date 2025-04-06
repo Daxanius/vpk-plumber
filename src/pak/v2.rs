@@ -366,9 +366,13 @@ impl PakWorker for VPKVersion2 {
 
             Some(VPKSignatureSection {
                 public_key_size,
-                public_key: public_key.try_into().expect("Public key must be 160 bytes"),
+                public_key: public_key
+                    .try_into()
+                    .map_err(|_| Error::BadData("Public key must be 160 bytes".to_string()))?,
                 signature_size,
-                signature: signature.try_into().expect("Signature must be 128 bytes"),
+                signature: signature
+                    .try_into()
+                    .map_err(|_| Error::BadData("Signature must be 128 bytes".to_string()))?,
             })
         } else {
             let _ = file.seek(std::io::SeekFrom::Current(
