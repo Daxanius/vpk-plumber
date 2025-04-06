@@ -182,7 +182,11 @@ where
                 .unwrap_or("")
                 .to_owned();
 
-            let dir_map = treeified.get_mut(&extension).unwrap();
+            let dir_map = treeified
+                .get_mut(&extension)
+                .ok_or(Error::DataNotFound(format!(
+                    "Extension not found in tree: {extension}"
+                )))?;
 
             if !dir_map.contains_key(&dir) {
                 dir_map.insert(dir.clone(), Vec::new());
@@ -191,7 +195,9 @@ where
             let preload_bytes: Option<&Vec<u8>> = self.preload.get(path_str);
             dir_map
                 .get_mut(&dir)
-                .unwrap()
+                .ok_or(Error::DataNotFound(format!(
+                    "Directory not found in tree: {dir}"
+                )))?
                 .push((file_name, entry, preload_bytes));
         }
 

@@ -400,7 +400,7 @@ impl PakWorker for VPKVersion1 {
     fn from_file(file: &mut File) -> Result<Self> {
         let header = VPKHeaderV1::from(file)?;
 
-        let tree_start = file.stream_position().unwrap();
+        let tree_start = file.stream_position().map_err(Error::Io)?;
         let tree = VPKTree::from(file, tree_start, header.tree_size.into())?;
 
         Ok(Self { header, tree })

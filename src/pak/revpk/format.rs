@@ -206,9 +206,9 @@ impl DirEntry for VPKDirectoryEntryRespawn {
 
         let mut file_parts: Vec<VPKFilePartEntryRespawn> = Vec::new();
 
-        let pos = file.stream_position().unwrap();
-        let end = file.seek(SeekFrom::End(0)).unwrap();
-        let _ = file.seek(SeekFrom::Start(pos)).unwrap();
+        let pos = file.stream_position().map_err(Error::Io)?;
+        let end = file.seek(SeekFrom::End(0)).map_err(Error::Io)?;
+        let _ = file.seek(SeekFrom::Start(pos)).map_err(Error::Io)?;
 
         loop {
             let archive_index = file.read_u16().map_err(|e| Error::Util {
@@ -216,7 +216,7 @@ impl DirEntry for VPKDirectoryEntryRespawn {
                 context: "Failed to read archive index".to_string(),
             })?;
 
-            if archive_index == 0xFFFF || file.stream_position().unwrap() == end {
+            if archive_index == 0xFFFF || file.stream_position().map_err(Error::Io)? == end {
                 break;
             }
 
@@ -1002,7 +1002,7 @@ impl PakWorker for VPKRespawn {
     fn from_file(file: &mut File) -> Result<Self> {
         let header = VPKHeaderRespawn::from(file)?;
 
-        let tree_start = file.stream_position().unwrap();
+        let tree_start = file.stream_position().map_err(Error::Io)?;
         let tree = VPKTree::from(file, tree_start, header.tree_size.into())?;
 
         let archive_cams = HashMap::new();

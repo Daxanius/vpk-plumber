@@ -157,8 +157,6 @@ impl VPKHeaderV2 {
     }
 
     /// Check if a file is in the VPK version 2 format.
-    /// # Panics
-    /// - When `stream_position` fails
     pub fn is_format(file: &mut File) -> bool {
         let Ok(pos) = file.stream_position() else {
             return false;
@@ -273,7 +271,7 @@ impl PakWorker for VPKVersion2 {
     fn from_file(file: &mut File) -> Result<Self> {
         let header = VPKHeaderV2::from(file)?;
 
-        let tree_start = file.stream_position().unwrap();
+        let tree_start = file.stream_position().map_err(Error::Io)?;
         let tree = VPKTree::from(file, tree_start, header.tree_size.into())?;
 
         let file_data = file
