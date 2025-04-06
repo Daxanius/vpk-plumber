@@ -390,20 +390,15 @@ impl DirEntry for VPKDirectoryEntry {
 /// Trait for reading VPK files.
 pub trait PakReader {
     /// Read the contents of a file stored in the VPK into memory.
-    fn read_file(
-        &self,
-        archive_path: &String,
-        vpk_name: &String,
-        file_path: &String,
-    ) -> Option<Vec<u8>>;
+    fn read_file(&self, archive_path: &str, vpk_name: &str, file_path: &str) -> Option<Vec<u8>>;
 
     /// Extract the contents of a file stored in the VPK to a file system location.
     fn extract_file(
         &self,
-        archive_path: &String,
-        vpk_name: &String,
-        file_path: &String,
-        output_path: &String,
+        archive_path: &str,
+        vpk_name: &str,
+        file_path: &str,
+        output_path: &str,
     ) -> Result<()>;
 
     /// Extract the contents of a file stored in the VPK to a file system location using memory-mapped files.
@@ -411,11 +406,11 @@ pub trait PakReader {
     #[cfg(feature = "mem-map")]
     fn extract_file_mem_map(
         &self,
-        archive_path: &String,
+        archive_path: &str,
         archive_mmaps: &HashMap<u16, FileBuffer>,
-        vpk_name: &String,
-        file_path: &String,
-        output_path: &String,
+        vpk_name: &str,
+        file_path: &str,
+        output_path: &str,
     ) -> Result<()>;
 }
 

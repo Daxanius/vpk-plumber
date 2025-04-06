@@ -11,9 +11,9 @@ fn vpk_empty() -> Result<()> {
     let vpk = VPKRespawn::try_from(&mut file)?;
 
     let result = vpk.read_file(
-        &String::from(common::DIR_REVPK),
-        &String::from(common::SINGLE_FILE_ARCHIVE),
-        &String::from(common::SINGLE_FILE_NAME),
+        common::DIR_REVPK,
+        common::SINGLE_FILE_ARCHIVE,
+        common::SINGLE_FILE_NAME,
     );
 
     assert!(result.is_none(), "File should not exist in empty archive");
@@ -27,9 +27,9 @@ fn vpk_single_file() -> Result<()> {
 
     let result = vpk
         .read_file(
-            &String::from(common::DIR_REVPK),
-            &String::from(common::SINGLE_FILE_ARCHIVE),
-            &String::from(common::SINGLE_FILE_NAME),
+            common::DIR_REVPK,
+            common::SINGLE_FILE_ARCHIVE,
+            common::SINGLE_FILE_NAME,
         )
         .unwrap();
 

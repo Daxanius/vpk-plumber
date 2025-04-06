@@ -139,12 +139,7 @@ pub struct VPKVersion1 {
 }
 
 impl PakReader for VPKVersion1 {
-    fn read_file(
-        &self,
-        archive_path: &String,
-        vpk_name: &String,
-        file_path: &String,
-    ) -> Option<Vec<u8>> {
+    fn read_file(&self, archive_path: &str, vpk_name: &str, file_path: &str) -> Option<Vec<u8>> {
         let entry = self.tree.files.get(file_path)?;
         let mut buf: Vec<u8> = Vec::new();
 
@@ -196,10 +191,10 @@ impl PakReader for VPKVersion1 {
 
     fn extract_file(
         &self,
-        archive_path: &String,
-        vpk_name: &String,
-        file_path: &String,
-        output_path: &String,
+        archive_path: &str,
+        vpk_name: &str,
+        file_path: &str,
+        output_path: &str,
     ) -> Result<()> {
         let entry = self
             .tree
@@ -293,11 +288,11 @@ impl PakReader for VPKVersion1 {
     #[cfg(feature = "mem-map")]
     fn extract_file_mem_map(
         &self,
-        _archive_path: &String,
+        _archive_path: &str,
         archive_mmaps: &HashMap<u16, FileBuffer>,
-        _vpk_name: &String,
-        file_path: &String,
-        output_path: &String,
+        _vpk_name: &str,
+        file_path: &str,
+        output_path: &str,
     ) -> Result<()> {
         let entry = self
             .tree

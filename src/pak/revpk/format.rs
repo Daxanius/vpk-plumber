@@ -520,12 +520,7 @@ pub struct VPKRespawn {
 }
 
 impl PakReader for VPKRespawn {
-    fn read_file(
-        &self,
-        archive_path: &String,
-        vpk_name: &String,
-        file_path: &String,
-    ) -> Option<Vec<u8>> {
+    fn read_file(&self, archive_path: &str, vpk_name: &str, file_path: &str) -> Option<Vec<u8>> {
         let entry: &VPKDirectoryEntryRespawn = self.tree.files.get(file_path)?;
         let mut buf: Vec<u8> = Vec::new();
 
@@ -651,10 +646,10 @@ impl PakReader for VPKRespawn {
 
     fn extract_file(
         &self,
-        archive_path: &String,
-        vpk_name: &String,
-        file_path: &String,
-        output_path: &String,
+        archive_path: &str,
+        vpk_name: &str,
+        file_path: &str,
+        output_path: &str,
     ) -> Result<()> {
         let entry: &VPKDirectoryEntryRespawn = self
             .tree
@@ -801,11 +796,11 @@ impl PakReader for VPKRespawn {
     #[cfg(feature = "mem-map")]
     fn extract_file_mem_map(
         &self,
-        archive_path: &String,
+        archive_path: &str,
         archive_mmaps: &HashMap<u16, FileBuffer>,
-        vpk_name: &String,
-        file_path: &String,
-        output_path: &String,
+        vpk_name: &str,
+        file_path: &str,
+        output_path: &str,
     ) -> Result<()> {
         let entry: &VPKDirectoryEntryRespawn = self
             .tree

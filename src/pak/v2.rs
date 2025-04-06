@@ -210,21 +210,16 @@ pub struct VPKVersion2 {
 }
 
 impl PakReader for VPKVersion2 {
-    fn read_file(
-        &self,
-        _archive_path: &String,
-        _vpk_name: &String,
-        _file_path: &String,
-    ) -> Option<Vec<u8>> {
+    fn read_file(&self, _archive_path: &str, _vpk_name: &str, _file_path: &str) -> Option<Vec<u8>> {
         todo!()
     }
 
     fn extract_file(
         &self,
-        _archive_path: &String,
-        _vpk_name: &String,
-        _file_path: &String,
-        _output_path: &String,
+        _archive_path: &str,
+        _vpk_name: &str,
+        _file_path: &str,
+        _output_path: &str,
     ) -> Result<()> {
         todo!()
     }
@@ -232,11 +227,11 @@ impl PakReader for VPKVersion2 {
     #[cfg(feature = "mem-map")]
     fn extract_file_mem_map(
         &self,
-        _archive_path: &String,
+        _archive_path: &str,
         _archive_mmaps: &HashMap<u16, FileBuffer>,
-        _vpk_name: &String,
-        _file_path: &String,
-        _output_path: &String,
+        _vpk_name: &str,
+        _file_path: &str,
+        _output_path: &str,
     ) -> Result<()> {
         todo!()
     }
