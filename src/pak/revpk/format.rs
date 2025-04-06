@@ -325,15 +325,20 @@ impl DirEntry for VPKDirectoryEntryRespawn {
 pub struct VPKFilePartEntryRespawn {
     /// The archive index this part is contained in.
     pub archive_index: u16,
+
     /// The load flags for the file part. (See [`EPackedLoadFlags`])
     pub load_flags: u16,
+
     /// The texture flags for the file part. (See [`EPackedTextureFlags`])
     pub texture_flags: u32,
+
     /// The offset of the file part in the archive.
     pub entry_offset: u64,
+
     /// The length of the file part in the archive.
     pub entry_length: u64,
-    /// The length of the file part when decompressd.
+
+    /// The length of the file part when decompressed.
     /// Will be equal to `entry_length` if the file was not compressed.
     pub entry_length_uncompressed: u64,
 }
@@ -1058,7 +1063,7 @@ impl VPKRespawn {
                     Err(err) => {
                         res = match res {
                             Ok(()) => Err(Error::BadData(format!(
-                                "Encountered erors reading CAM files: {err}"
+                                "Encountered errors reading CAM files: {err}"
                             ))),
                             Err(org) => Err(Error::BadData(format!("{org}, {err}"))),
                         };

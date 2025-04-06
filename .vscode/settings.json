@@ -9,12 +9,14 @@
         "mem-map"
     ],
     "cSpell.words": [
+        "Acache",
         "clippy",
         "concatcp",
         "cpucache",
         "DECOMP",
         "docsrs",
         "Dota",
+        "englishclient",
         "HDLC",
         "lzham",
         "mmaps",
@@ -24,6 +26,7 @@
         "rustdoc",
         "sourcepak",
         "TFLZHAM",
-        "Titanfall"
+        "Titanfall",
+        "treeified"
     ]
 }

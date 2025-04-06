@@ -144,7 +144,7 @@ fn test_invalid_utf8_string() -> Result<()> {
 }
 
 #[test]
-fn test_long_multibyte_string() -> Result<()> {
+fn test_long_multi_byte_string() -> Result<()> {
     let mut file = tempfile().map_err(Error::Io)?;
     let s = "こんにちは、世界! 🌍🚀✨ -- vpk test string with unicode";
     file.write_string(s)?;
