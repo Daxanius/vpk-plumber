@@ -35,14 +35,38 @@ where
     assert_eq!(
         vpk.tree.files.len(),
         vpk_result.tree.files.len(),
-        "VPK should contain a single file"
+        "VPK sizes don't match"
     );
 
     assert_eq!(
-        vpk.tree.files.get(common::SINGLE_FILE_NAME),
-        vpk_result.tree.files.get(common::SINGLE_FILE_NAME),
-        "File data does not match"
+        vpk.tree.preload.len(),
+        vpk_result.tree.preload.len(),
+        "Preload sizes don't match"
     );
+
+    for key in vpk.tree.files.keys() {
+        assert!(
+            vpk_result.tree.files.contains_key(key),
+            "VPK files don't match"
+        );
+
+        assert_eq!(
+            vpk.tree.files[key], vpk_result.tree.files[key],
+            "VPK file data doesn't match"
+        );
+    }
+
+    for key in vpk.tree.preload.keys() {
+        assert!(
+            vpk_result.tree.preload.contains_key(key),
+            "VPK preloads don't match"
+        );
+
+        assert_eq!(
+            vpk.tree.preload[key], vpk_result.tree.preload[key],
+            "VPK preload data doesn't match"
+        );
+    }
 
     Ok(())
 }
