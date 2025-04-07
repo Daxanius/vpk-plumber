@@ -1,5 +1,4 @@
 mod data;
-#[cfg(feature = "mem-map")]
-mod mem_map;
+mod extract;
 mod read;
 mod roundtrip;

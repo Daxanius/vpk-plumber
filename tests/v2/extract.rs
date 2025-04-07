@@ -9,7 +9,34 @@ use std::collections::HashMap;
 
 #[ignore = "not yet implemented"]
 #[test]
-fn extract_vpk_single_file() -> Result<()> {
+fn vpk_single_file() -> Result<()> {
+    let mut file = File::open(common::PAK_V2_SINGLE_FILE)?;
+    let vpk = VPKVersion2::try_from(&mut file)?;
+
+    let out_path = tempfile::NamedTempFile::new()?;
+
+    vpk.extract_file(
+        common::DIR_V2,
+        common::SINGLE_FILE_ARCHIVE,
+        common::SINGLE_FILE_NAME,
+        out_path.path().to_str().unwrap(),
+    )?;
+
+    let mut result = String::new();
+    File::open(&out_path)?.read_to_string(&mut result)?;
+
+    assert_eq!(
+        result,
+        common::SINGLE_FILE_CONTENT,
+        "File contents should match",
+    );
+    Ok(())
+}
+
+#[cfg(feature = "mem-map")]
+#[ignore = "not yet implemented"]
+#[test]
+fn vpk_single_file_mem_map() -> Result<()> {
     let mut file = File::open(common::PAK_V2_SINGLE_FILE)?;
     let vpk = VPKVersion2::try_from(&mut file)?;
 
