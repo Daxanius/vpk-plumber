@@ -3,5 +3,30 @@
         ".\\Cargo.toml"
     ],
     "rust-analyzer.showUnlinkedFileNotification": false,
-    "rust-analyzer.cargo.features": ["respawn", "mem-map"]
+    "rust-analyzer.cargo.features": [
+        "detect",
+        "revpk",
+        "mem-map"
+    ],
+    "cSpell.words": [
+        "Acache",
+        "clippy",
+        "concatcp",
+        "cpucache",
+        "DECOMP",
+        "docsrs",
+        "Dota",
+        "englishclient",
+        "HDLC",
+        "lzham",
+        "mmaps",
+        "repr",
+        "Respawn",
+        "revpk",
+        "rustdoc",
+        "sourcepak",
+        "TFLZHAM",
+        "Titanfall",
+        "treeified"
+    ]
 }

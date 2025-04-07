@@ -1,5 +1,8 @@
 # Set the default behavior, in case people don't have core.autocrlf set.
 * text=auto
 
+*.vpk binary
+/tests/data/* linguist-vendored
+
 # Declare files that will always have CRLF line endings on checkout.
 test_files/titanfall/*.txt text eol=crlf

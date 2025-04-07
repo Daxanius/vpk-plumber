@@ -20,8 +20,11 @@
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
-pub mod common;
+#[cfg(feature = "detect")]
+pub mod detect;
 pub mod pak;
+
+pub(crate) mod util;
 
 #[cfg(test)]
 mod tests;
