@@ -383,7 +383,7 @@ impl DirEntry for VPKDirectoryEntry {
     }
 
     fn get_preload_length(&self) -> usize {
-        self.preload_length as _
+        self.preload_length.into()
     }
 }
 
