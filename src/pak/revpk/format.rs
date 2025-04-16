@@ -316,7 +316,7 @@ impl DirEntry for VPKDirectoryEntryRespawn {
     }
 
     fn get_preload_length(&self) -> usize {
-        self.preload_length as _
+        self.preload_length.into()
     }
 }
 
@@ -580,7 +580,7 @@ impl PakReader for VPKRespawn {
                         .ok()?;
                 }
 
-                let _ = archive_file.seek(SeekFrom::Start(file_part.entry_offset as _));
+                let _ = archive_file.seek(SeekFrom::Start(file_part.entry_offset));
 
                 let mut entry_len = file_part.entry_length;
 
@@ -605,15 +605,18 @@ impl PakReader for VPKRespawn {
                         && total_len > expected_len.into()
                     {
                         let new_len = entry_len + u64::from(expected_len) - total_len;
-                        part.truncate(new_len as _);
+                        part.truncate(new_len.try_into().ok()?);
                     }
 
                     buf.append(&mut part);
                 } else {
-                    let compressed_data = archive_file.read_bytes(entry_len as _).ok()?;
+                    let compressed_data =
+                        archive_file.read_bytes(entry_len.try_into().ok()?).ok()?;
 
-                    let mut decompressed =
-                        decompress(&compressed_data, file_part.entry_length_uncompressed as _);
+                    let mut decompressed = decompress(
+                        &compressed_data,
+                        file_part.entry_length_uncompressed.try_into().ok()?,
+                    );
                     buf.append(&mut decompressed);
                 }
             }
@@ -625,7 +628,7 @@ impl PakReader for VPKRespawn {
                 .extension()
                 .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"))
         {
-            buf.truncate(expected_len as _);
+            buf.truncate(expected_len.try_into().ok()?);
         }
 
         let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC);
@@ -725,7 +728,7 @@ impl PakReader for VPKRespawn {
                     archive_file = File::open(path).map_err(Error::Io)?;
                 }
 
-                let _ = archive_file.seek(SeekFrom::Start(file_part.entry_offset as _));
+                let _ = archive_file.seek(SeekFrom::Start(file_part.entry_offset));
 
                 let mut entry_len = file_part.entry_length;
 
@@ -740,13 +743,12 @@ impl PakReader for VPKRespawn {
                 total_len += entry_len;
 
                 if file_part.entry_length == file_part.entry_length_uncompressed {
-                    let mut part =
-                        archive_file
-                            .read_bytes(entry_len as _)
-                            .map_err(|e| Error::Util {
-                                source: e,
-                                context: "Failed to read from archive file".to_string(),
-                            })?;
+                    let mut part = archive_file
+                        .read_bytes(entry_len.try_into().map_err(|_| Error::DataTooLarge)?)
+                        .map_err(|e| Error::Util {
+                            source: e,
+                            context: "Failed to read from archive file".to_string(),
+                        })?;
 
                     // Truncate WAV files that exceed their expected length
                     if expected_len > 0
@@ -756,23 +758,27 @@ impl PakReader for VPKRespawn {
                         && total_len > expected_len.into()
                     {
                         let new_len = entry_len + u64::from(expected_len) - total_len;
-                        part.truncate(new_len as _);
+                        part.truncate(new_len.try_into().map_err(|_| Error::DataTooLarge)?);
                     }
 
                     out_file.write_all(&part).map_err(Error::Io)?;
 
                     digest.update(&part);
                 } else {
-                    let compressed_data =
-                        archive_file
-                            .read_bytes(entry_len as _)
-                            .map_err(|e| Error::Util {
-                                source: e,
-                                context: "Failed to read from archive files".to_string(),
-                            })?;
+                    let compressed_data = archive_file
+                        .read_bytes(entry_len.try_into().map_err(|_| Error::DataTooLarge)?)
+                        .map_err(|e| Error::Util {
+                            source: e,
+                            context: "Failed to read from archive files".to_string(),
+                        })?;
 
-                    let decompressed =
-                        decompress(&compressed_data, file_part.entry_length_uncompressed as _);
+                    let decompressed = decompress(
+                        &compressed_data,
+                        file_part
+                            .entry_length_uncompressed
+                            .try_into()
+                            .map_err(|_| Error::DataTooLarge)?,
+                    );
 
                     out_file.write_all(&decompressed).map_err(Error::Io)?;
 
@@ -846,8 +852,14 @@ impl PakReader for VPKRespawn {
             .ok_or(Error::MemoryMappedFileNotFound(archive_index))?;
 
         archive_file.prefetch(
-            entry.file_parts[0].entry_offset as _,
-            entry.file_parts[0].entry_length as _,
+            entry.file_parts[0]
+                .entry_offset
+                .try_into()
+                .map_err(|_| Error::DataTooLarge)?,
+            entry.file_parts[0]
+                .entry_length
+                .try_into()
+                .map_err(|_| Error::DataTooLarge)?,
         );
 
         // We have to do extra processing if it's a wav file
@@ -888,8 +900,14 @@ impl PakReader for VPKRespawn {
                     .get(&archive_index)
                     .ok_or(Error::MemoryMappedFileNotFound(archive_index))?
                     .prefetch(
-                        entry.file_parts[i + 1].entry_offset as _,
-                        entry.file_parts[i + 1].entry_length as _,
+                        entry.file_parts[i + 1]
+                            .entry_offset
+                            .try_into()
+                            .map_err(|_| Error::DataTooLarge)?,
+                        entry.file_parts[i + 1]
+                            .entry_length
+                            .try_into()
+                            .map_err(|_| Error::DataTooLarge)?,
                     );
             }
 
@@ -946,8 +964,13 @@ impl PakReader for VPKRespawn {
                         ))?
                         .to_vec();
 
-                    let decompressed =
-                        decompress(&compressed_data, file_part.entry_length_uncompressed as _);
+                    let decompressed = decompress(
+                        &compressed_data,
+                        file_part
+                            .entry_length_uncompressed
+                            .try_into()
+                            .map_err(|_| Error::DataTooLarge)?,
+                    );
 
                     out_file.write_all(&decompressed).map_err(Error::Io)?;
 

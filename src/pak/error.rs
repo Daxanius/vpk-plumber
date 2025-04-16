@@ -19,6 +19,7 @@ pub enum Error {
     BadData(String),
     DataNotFound(String),
     MemoryMappedFileNotFound(u16),
+    DataTooLarge,
 }
 
 impl fmt::Display for Error {

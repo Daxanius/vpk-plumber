@@ -270,14 +270,23 @@ impl PakWorker for VPKVersion2 {
         let tree = VPKTree::from(file, tree_start, header.tree_size.into())?;
 
         let file_data = file
-            .read_bytes(header.file_data_section_size as _)
+            .read_bytes(
+                header
+                    .file_data_section_size
+                    .try_into()
+                    .map_err(|_| Error::DataTooLarge)?,
+            )
             .map_err(|e| Error::Util {
                 source: e,
                 context: "Failed to read file data section".to_string(),
             })?;
 
         let mut archive_md5_section_entries = Vec::new();
-        while archive_md5_section_entries.len() < (header.archive_md5_section_size / 28) as _ {
+        while archive_md5_section_entries.len()
+            < (header.archive_md5_section_size / 28)
+                .try_into()
+                .map_err(|_| Error::DataTooLarge)?
+        {
             archive_md5_section_entries.push(VPKArchiveMD5SectionEntry {
                 archive_index: file.read_u32().map_err(|e| Error::Util {
                     source: e,
@@ -341,7 +350,11 @@ impl PakWorker for VPKVersion2 {
             })?;
 
             let public_key = file
-                .read_bytes(public_key_size as _)
+                .read_bytes(
+                    public_key_size
+                        .try_into()
+                        .map_err(|_| Error::DataTooLarge)?,
+                )
                 .map_err(|e| Error::Util {
                     source: e,
                     context: "Failed to read signature public key".to_string(),
@@ -353,7 +366,7 @@ impl PakWorker for VPKVersion2 {
             })?;
 
             let signature = file
-                .read_bytes(signature_size as _)
+                .read_bytes(signature_size.try_into().map_err(|_| Error::DataTooLarge)?)
                 .map_err(|e| Error::Util {
                     source: e,
                     context: "Failed to read signature".to_string(),

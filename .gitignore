@@ -1,5 +1,2 @@
 Cargo.lock
 /target
-
-# ignore files generated during tests
-/test_files/out

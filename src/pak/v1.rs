@@ -172,7 +172,7 @@ impl PakReader for VPKVersion1 {
 
             buf.append(
                 archive_file
-                    .read_bytes(entry.entry_length as _)
+                    .read_bytes(entry.entry_length.try_into().ok()?)
                     .ok()?
                     .as_mut(),
             );
